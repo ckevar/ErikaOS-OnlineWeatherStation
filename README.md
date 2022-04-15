@@ -1,7 +1,7 @@
 # ErikaOs-OnlineWeatherStation
 It drags weather information from OpenWeather.org using location based on ip-api.com.
 ## Hardware 
-It's an _STM32f407-discovery_ using _std_ library mounted over a _dicover-more_ extension board. This board also includes a LCD. 
+It's a _STM32f407-discovery_ using _std_ library mounted over a _dicover-more_ extension board. This board also includes a LCD. 
 The ESP8266 is connected through UART in the COM1 (USART6 on the _discovery_ PC6-PC7 pins) on the _std_ library. ESP8266's reset/GPIO0/GIPO2/Enable pin are fixed voltage, meaning they are not connected to any STM32's GPIOS.
 
 ## How to run/flash it
