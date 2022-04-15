@@ -411,7 +411,7 @@ void app_fsm_app(void) {
 			WIFI_SET = WiFi_SETTINGUP;
 			UI_clear_progress();
 			UI_WiFiNo();
-			LCD_UsrLog("START\r\n");
+			// LCD_UsrLog("START\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
 			APP_FSM_SUPER_STATE =  APP_FSM_SUPER_NORMAL;
 			break;
@@ -422,7 +422,7 @@ void app_fsm_app(void) {
 
 			UI_clear_progress();
 			UI_WiFiNo();
-			LCD_UsrLog("START\r\n");
+			// LCD_UsrLog("START\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
 			APP_FSM_SUPER_STATE =  APP_FSM_SUPER_NORMAL;
 			break;
@@ -431,7 +431,7 @@ void app_fsm_app(void) {
 			// Sets the ESP8266 to work as a WiFi station
 			esp8266_set_CWMODE(ESP8266_CWMODE_STATION);
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
-			LCD_UsrLog("STATION MODE\r\n");
+			// LCD_UsrLog("STATION MODE\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);		
 			break;
 
@@ -439,18 +439,18 @@ void app_fsm_app(void) {
 			// Sets the ESP8266 to connect to a single server at the time
 			esp8266_set_CIPMUX(ESP8266_CIPMUX_SINGLE_CON);
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
-			LCD_UsrLog("CIPMUX SINGLE\r\n");
+			// LCD_UsrLog("CIPMUX SINGLE\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
 			break;
 
 		case APP_FSM_WIFI_CONN:
 			// Checks if the ESP8266 is connected to an Access Point
-			LCD_UsrLog("CHECCKING WIFI connetion\r\n");
+			// LCD_UsrLog("CHECCKING WIFI connetion\r\n");
 			esp8266_get_CIPSTA_CUR();
 
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
 			UI_WiFiSettingUp();
-			LCD_UsrLog("Check Connection status\r\n");
+			// LCD_UsrLog("Check Connection status\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
 			break;
 		/*****************************************************************/
@@ -546,7 +546,7 @@ void app_fsm_app(void) {
 		case APP_FSM_SET_WPA:
 			// Sets the ESP8266 Access Point SSID and Password
 			esp8266_set_CWSAP(APP_AP_CONFIGURATION, APP_AP_CONFIGURATION_LEN);
-			LCD_UsrLog("Setting WPA SSID and Password\r\n");
+			// LCD_UsrLog("Setting WPA SSID and Password\r\n");
 			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
@@ -555,7 +555,7 @@ void app_fsm_app(void) {
 		case APP_FSM_SET_AP_CIPMUX:
 			// Sends to allow multiplce connection on the ESP8266
 			esp8266_set_CIPMUX(ESP8266_CIPMUX_MULTI_CON);
-			LCD_UsrLog("MULTIPLE\r\n");
+			// LCD_UsrLog("MULTIPLE\r\n");
 			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
@@ -565,7 +565,7 @@ void app_fsm_app(void) {
 			// Asks the ESP8266 to create a webserver at port 80
 			esp8266_clean_link_buff(0);
 			esp8266_enable_HTTPServer_P80();
-			LCD_UsrLog("Setting up server\r\n");
+			// LCD_UsrLog("Setting up server\r\n");
 			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
@@ -575,7 +575,7 @@ void app_fsm_app(void) {
 		case APP_FSM_WEBAPP_OK_CLIENT0:
 			// Idle state waiting for clients to request or submit 
 			// HTTP information on the webserver
-			LCD_UsrLog("CLIENT0\r\n");
+			// LCD_UsrLog("CLIENT0\r\n");
 			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDDLE);
 			APP_FSM_PREV_STATE = APP_FSM_CURR_STATE;
@@ -585,7 +585,7 @@ void app_fsm_app(void) {
 		case APP_FSM_WEBAPP_OK_CLIENT1:
 			// Sends the requested HTML
 			esp8266_send_html();
-			LCD_UsrLog("CLIENT1\r\n");
+			// LCD_UsrLog("CLIENT1\r\n");
 			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDDLE);
 			ESP8266_STATUS_TCP = ESP8266_ST_UNKNOWN_CODE;
@@ -605,7 +605,7 @@ void app_fsm_app(void) {
 		case APP_FSM_TRY_NEW_SSID_AND_PASSWORD:
 			// Asks the ESP8266 to connect to a giving Access Point on the
 			// webserver
-			LCD_UsrLog("TRYING NEW SSID\r\n");
+			// LCD_UsrLog("TRYING NEW SSID\r\n");
 			esp8266_set_SSID_and_PASS(ssidNpswd.ssidNpassword, ssidNpswd.len);
 
 			UI_WiFiSettingUp();
@@ -618,7 +618,7 @@ void app_fsm_app(void) {
 		case APP_FSM_NEW_SSIDnPSWD_CONNECTED:
 			// Connection to new AP has been successful, it retrieves
 			// a webpage to the user telling 'DONE'
-			LCD_UsrLog("NEW SSID WENT OK\r\n");
+			// LCD_UsrLog("NEW SSID WENT OK\r\n");
 			WIFI_SET = WiFi_CONNECTED;
 			
 			// set MYME Type TEXT/HTML
@@ -659,7 +659,7 @@ void app_fsm_app(void) {
 			esp8266_load_html(webAppOptions.http, webAppOptions.http_len);
 
 			UI_WiFiNo();
-			LCD_UsrLog("New SSID and Password Failed\r\n");
+			// LCD_UsrLog("New SSID and Password Failed\r\n");
 			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
@@ -667,7 +667,7 @@ void app_fsm_app(void) {
 
 		case APP_FSM_SHUTDOWN_WEBSERVER:
 			// The webserver on the ESP8266 is shutdown
-			LCD_UsrLog("Shutting down server\r\n");
+			// LCD_UsrLog("Shutting down server\r\n");
 			esp8266_disable_HTTPServer_P80();
 
 			UI_SettingsOff();

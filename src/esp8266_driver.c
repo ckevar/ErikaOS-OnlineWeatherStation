@@ -206,7 +206,6 @@ void esp8266_at(void) {
 void esp8266_restart(void) {
 	esp8266_dma_cmd_mul_param(ESP8266_AT_RST, ESP8266_AT_RST_LEN, NULL, 0);
 	ESP8266_SET_RESTART = 1;
-	LCD_UsrLog("Resetting\r\n");
 }
 
 void esp8266_restore(void) {
@@ -560,7 +559,7 @@ void esp8266_response(void) {
 	static char *buff_link;
 
 	if (ESP8266_IPD_DATA_STATUS == ESP8266_IPD_DATA_OK2PARSE) {
-		LCD_UsrLog("http \r\n");
+		// LCD_UsrLog("http \r\n");
 		if(esp8266_http_parse(buff_link))
 			ESP8266_STATUS = ESP8266_ST_ERROR_CODE;
 		// LCD_UsrLog("CCCC:%s\r\n", buff_link);
@@ -611,7 +610,7 @@ void esp8266_response(void) {
 		}
 
 		else if (memcmp(buff_tmp->RX_READ, ESP8266_ST_IPD, ESP8266_ST_IPD_LEN) == 0) {
-			LCD_UsrLog("IPD\r\n");
+			// LCD_UsrLog("IPD\r\n");
 			if (esp8266_ipd_parse(buff_link)) {
 				buff_link = ESP8266_link.buffXlink[*buff_link];
 				ESP8266_IPD_DATA_STATUS = ESP8266_IPD_DATA_OK2PARSE;

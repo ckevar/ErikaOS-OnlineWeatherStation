@@ -25,7 +25,7 @@ $ erika-gen /path/where/Erika-CLI/is/installed/Erika-CLI/ conf.oil .
 add _usr.mk_ inside makefile
 
 ``` bash
-$ nano makfile
+$ nano makefile
 ```
 in the first line write:
 
