@@ -210,7 +210,7 @@ void UI_writeWeatherFeelsLike(char *feels_like_val) {
 	char temp[3] = {0,0,0};
 	unsigned char i = 0;
 	LCD_UsrLog("%s\r\n", feels_like_val);
-	while (*feels_like_val != '.') {
+	while ((*feels_like_val != '.') && (*feels_like_val != ',')) {
 		temp[i++] = *feels_like_val;
 		feels_like_val++;
 	}
@@ -271,7 +271,7 @@ void UI_writeWeatherCurrTemp(char *curr_temp) {
 	char tmp[3] = {0, 0, 0};
 	unsigned char i = 0;
 
-	while (*curr_temp != '.'){
+	while ((*curr_temp != '.') && (*curr_temp != ',')){
 		tmp[i++] = *curr_temp;
 		curr_temp++;
 	}

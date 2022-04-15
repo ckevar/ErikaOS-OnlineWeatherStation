@@ -1,3 +1,4 @@
+# This file should be included in the first line of the Makefile as: include usr.mk
 GNU_ARM_ROOT = $(HOME)/Apps/gcc-arm-none-eabi-9-2019-q4-major
 
 vpath %.c src ui/src img/src
