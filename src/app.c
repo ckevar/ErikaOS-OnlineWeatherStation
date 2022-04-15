@@ -89,9 +89,9 @@ static char OWAPI_process_result(char *tmp)
 		
 		*(OWAPI_VALS[OWAPI_DESCRIPTION_Idx] + OWAPI_VALS_LEN[OWAPI_DESCRIPTION_Idx] - 1) = 0;
 		OWAPI_VALS[OWAPI_DESCRIPTION_Idx]++;
-		UI_writeWeatherDescription(OWAPI_VALS[OWAPI_DESCRIPTION_Idx]);
+		// UI_writeWeatherDescription(OWAPI_VALS[OWAPI_DESCRIPTION_Idx]);
 
-		UI_writeWeatherFeelsLike(OWAPI_VALS[OWAPI_FEELS_LIKE_Idx]);
+		// UI_writeWeatherFeelsLike(OWAPI_VALS[OWAPI_FEELS_LIKE_Idx]);
 		UI_writeWeatherCurrTemp(OWAPI_VALS[OWAPI_TEMP_Idx]);
 
 		*(OWAPI_VALS[OWAPI_ICON_Idx] + OWAPI_VALS_LEN[OWAPI_ICON_Idx] - 1) = 0;
@@ -281,7 +281,6 @@ static void app_http_from_WebApp(char *arriving_http, char link_id, short *prev_
 		build_HTTP(&webAppOptions);
 
 		// Prepare ESP8266 to send not found page
-		// esp8266_set_CIPSEND_link(link_id, WEBAPP_404_LEN_STR, WEBAPP_404_LEN_STR_LEN);
 		esp8266_set_CIPSEND_link(link_id, webAppOptions.http_len_str, webAppOptions.http_len2);
 
 		// Load not found page into buffer
@@ -379,9 +378,6 @@ void app_fsm_app(void) {
 	
 	/* SSID AND PSW for ESP */
 	static SSIDnPSWD_t ssidNpswd;
-	// static char ESP8266_ssidNpswd[128];
-	// static char ESP8266_ssidNpswd_LEN = 0;
-	// static char ESP8266_ssidNpswd_link_OnHold;
 
 	/**** CHECK EVENTS (Screen touched?) ****/
 	// if(IsEvent(RESET_ESP8266_EVNT)) {
@@ -391,8 +387,8 @@ void app_fsm_app(void) {
 
 	// } else 
 	if (IsEvent(SET_AP_ESP8266_EVNT)) {
-		APP_FSM_CURR_STATE = APP_FSM_AP_RESTART;
-		APP_FSM_PREV_STATE = APP_FSM_AP_RESTART;
+		APP_FSM_CURR_STATE = APP_FSM_WIFI_CONN;
+		APP_FSM_PREV_STATE = APP_FSM_WIFI_CONN;
 		ClearEvents();
 	}
 	if (INTERNAL_EVENT_UPDATE && (APP_FSM_SUPER_STATE == APP_FSM_SUPER_NORMAL)) {
@@ -411,7 +407,7 @@ void app_fsm_app(void) {
 			WIFI_SET = WiFi_SETTINGUP;
 			UI_clear_progress();
 			UI_WiFiNo();
-			// LCD_UsrLog("START\r\n");
+			LCD_UsrLog("RESTART\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
 			APP_FSM_SUPER_STATE =  APP_FSM_SUPER_NORMAL;
 			break;
@@ -422,7 +418,7 @@ void app_fsm_app(void) {
 
 			UI_clear_progress();
 			UI_WiFiNo();
-			// LCD_UsrLog("START\r\n");
+			LCD_UsrLog("START\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
 			APP_FSM_SUPER_STATE =  APP_FSM_SUPER_NORMAL;
 			break;
@@ -431,7 +427,7 @@ void app_fsm_app(void) {
 			// Sets the ESP8266 to work as a WiFi station
 			esp8266_set_CWMODE(ESP8266_CWMODE_STATION);
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
-			// LCD_UsrLog("STATION MODE\r\n");
+			LCD_UsrLog("STATION MODE\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);		
 			break;
 
@@ -439,7 +435,7 @@ void app_fsm_app(void) {
 			// Sets the ESP8266 to connect to a single server at the time
 			esp8266_set_CIPMUX(ESP8266_CIPMUX_SINGLE_CON);
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
-			// LCD_UsrLog("CIPMUX SINGLE\r\n");
+			LCD_UsrLog("CIPMUX SINGLE\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
 			break;
 
@@ -450,7 +446,7 @@ void app_fsm_app(void) {
 
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
 			UI_WiFiSettingUp();
-			// LCD_UsrLog("Check Connection status\r\n");
+			LCD_UsrLog("Check Connection status\r\n");
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
 			break;
 		/*****************************************************************/
@@ -459,6 +455,7 @@ void app_fsm_app(void) {
 		case APP_FSM_SET_IPAPI_CIPSTART:
 			// Sends the DNSS of the IP-API to know the location of the
 			// ESP8266 based on its public IP.
+			LCD_UsrLog("Connet to IP-API\r\n");
 			esp8266_set_DNS(IPAPI_JSON_DNS_PORT, IPAPI_JSON_DNS_PORT_LEN);
 
 			UI_WiFiConnected();
@@ -469,7 +466,9 @@ void app_fsm_app(void) {
 			break;	
 
 		case APP_FSM_SET_IPAPI_CIPSEND:
-			// Tells the ESP8266 how long the HTTP data will be 
+			// Tells the ESP8266 how long the HTTP data will be
+			LCD_UsrLog("Allocate space for IP-API\r\n");
+
 			esp8266_set_CIPSEND(IPAPI_GET_RESOURCE_LEN_STR, IPAPI_GET_RESOURCE_LEN_STR_LEN);
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
@@ -477,6 +476,8 @@ void app_fsm_app(void) {
 							
 		case APP_FSM_SET_IPAPI_REQ_LOCATION:
 			// Sends the REST request to IP-API
+			LCD_UsrLog("Request HTML IP-API\r\n");
+
 			esp8266_req_HTML(IPAPI_GET_RESOURCE, IPAPI_GET_RESOURCE_LEN);
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
@@ -484,12 +485,15 @@ void app_fsm_app(void) {
 
 		case APP_FSM_CLOSE_IPAPI_CONNECTION:
 			// Closes the connection with IP-API
+			LCD_UsrLog("close IP-API connection\r\n");
 			esp8266_close_tcp(0); // 0 for Single connections CMUX = 0
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
 			break;
 
 		case APP_FSM_SET_OW_API_CIPSTART:
+			LCD_UsrLog("Connet to OW-API\r\n");
+
 			// Starts the connection the OpenWeather server
 			esp8266_set_DNS(OWAPI_DNS_PORT, OWAPI_DNS_PORT_LEN);
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
@@ -498,6 +502,8 @@ void app_fsm_app(void) {
 
 		case APP_FSM_SET_OW_API_CIPSEND:
 			// Tells ESP8266 length of the HTTP request
+			LCD_UsrLog("allocate for OW-API\r\n");
+
 			esp8266_set_CIPSEND(OWAPI_HTTP_MSG2REQ_LEN_STR, strlen(OWAPI_HTTP_MSG2REQ_LEN_STR)); 
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
@@ -505,6 +511,8 @@ void app_fsm_app(void) {
 
 		case APP_FSM_SET_OW_API_REQ_WEATHER:
 			// Sends the HTTP request
+			LCD_UsrLog("request HTML for OW-API\r\n");
+
 			esp8266_req_HTML(OWAPI_HTTP_MSG2REQ, OWAPI_HTTP_MSG2REQ_LEN);
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
@@ -512,6 +520,8 @@ void app_fsm_app(void) {
 
 		case APP_FSM_CLOSE_OW_API_CONNECTION:
 			// Closes connection with OpenWeather
+			LCD_UsrLog("Close connection for OW-API\r\n");
+
 			esp8266_close_tcp(0); // 0 for Single connections CMUX = 0
 			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDDLE);
 			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
@@ -725,6 +735,7 @@ void app_fsm_app(void) {
 
 		case APP_FSM_ERR_FAIL:
 			UI_set_err_progress(APP_FSM_PREV_STATE, APP_FSM_IDDLE);
+			LCD_UsrLog("STATE %d\r\n", APP_FSM_PREV_STATE);
 			if (APP_FSM_PREV_STATE == APP_FSM_TRY_NEW_SSID_AND_PASSWORD)
 				APP_FSM_CURR_STATE = APP_FSM_TRY_AGAIN_WA_SSID_AND_PASSWORD;
 			
@@ -740,7 +751,11 @@ void app_fsm_app(void) {
 			else if ((APP_FSM_PREV_STATE == APP_FSM_WEBAPP_OK_CLIENT1) && (WIFI_SET == WiFi_SETTINGUP)) {
 				APP_FSM_CURR_STATE = APP_FSM_CLEAN_AP_BUFFER;
 				LCD_UsrLog("Error Wifi SETTINGS up\r\n");
-			}
+			} else if (APP_FSM_PREV_STATE == APP_FSM_SET_IPAPI_CIPSTART) {
+				LCD_UsrLog("Lol\r\n");
+				APP_FSM_CURR_STATE = APP_FSM_WIFI_CONN;
+			} else if (APP_FSM_PREV_STATE == APP_FSM_SET_OW_API_CIPSTART)
+				APP_FSM_CURR_STATE = APP_FSM_WIFI_CONN;
 
 			break;
 
