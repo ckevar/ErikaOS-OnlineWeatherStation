@@ -73,4 +73,6 @@ void UI_writeWeatherCurrTemp(char *curr_temp);
 
 void UI_SettingsOn(void);
 void UI_SettingsOff(void);
+void UI_WriteState(char *str);
+
 #endif /* WIDGETCONFIG_H_ */

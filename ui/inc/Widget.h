@@ -49,5 +49,6 @@ unsigned char DrawInit(Widget ws[]);
 unsigned char DrawOn(Widget *w);
 unsigned char DrawOff(Widget *w);
 unsigned char WPrint(Widget *w, char *s);
+unsigned char WPrintLog(Widget *w, char *s);
 
 #endif /* BUTTON_H_ */

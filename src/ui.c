@@ -131,8 +131,7 @@ Widget weather_ui[NUMWIDGETS] = {
 	{123, 110, 54, 54, IMAGE, (void *)&temp_sign}, 
 	{177, 110, 54, 54, IMAGE, (void *)&temp_dec_img},
 	{231, 110, 54, 54, IMAGE, (void *)&temp_uni_img},
-	{201, 23, 8, 8, TEXT, (void *) &state_dev},
-
+	{230, 5, 8, 8, TEXT, (void *) &state_dev},
 };
 
 void DrawFixWidgets(){
@@ -203,7 +202,7 @@ void UI_LocationUnavailable(void) {
 
 /****************** WEATHER FUNCTIONS ******************/
 void UI_writeWeatherDescription(char *weatherDescription) {
-	WPrint(&weather_ui[DESCRIPTION_STR], weatherDescription);
+	WPrintLog(&weather_ui[DESCRIPTION_STR], weatherDescription);
 }
 
 void UI_writeWeatherFeelsLike(char *feels_like_val) {
@@ -347,6 +346,10 @@ void UI_SettingsOff(void) {
 }
 /*******************************************************/
 
+void UI_WriteState(char *str){
+	LCD_DrawFullRect(5, 230, 300, 8);
+	WPrintLog(&weather_ui[STATE_DEV_STR], str);	
+}
 /*
  * #bash to conver number file into the desired sizes
  * 	convert p-replace-color.php.png -crop 54x54+200+212 one.png

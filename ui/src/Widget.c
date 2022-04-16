@@ -106,6 +106,24 @@ unsigned char WPrint(Widget *w, char *s)
 		return 0;
 }
 
+static void LCD_DisplayStringXYLog(uint16_t xpos, uint16_t ypos, uint8_t *ascii) {
+	while(*ascii != 0) {
+		LCD_DisplayChar(xpos, ypos, *ascii);
+		ypos += 8;
+		if(ypos >= LCD_PIXEL_WIDTH)
+			break;
+		ascii++;
+	}
+}
 
-
+unsigned char WPrintLog(Widget *w, char *s)
+{
+	if (w->wt == TEXT) {
+		LCD_SetTextColor(txtinfo(w)->color);
+		LCD_SetFont(txtinfo(w)->font);
+		LCD_DisplayStringXYLog(w->xl, w->yt, s);
+		return 1;
+	} else
+		return 0;
+}
 
