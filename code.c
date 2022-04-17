@@ -66,8 +66,6 @@
 
 
 ESP8266_BUFF_t ESP8266_Buff;
-// ESP8266_Search_In_Buff_t sib_ipapi;
-// ESP8266_Search_In_Buff_t sib_owapi;
 
 /*
  * SysTick ISR2
@@ -97,7 +95,7 @@ TASK(TaskLCDTouch) {
 TASK(Task_ESP82266_RevResponse)
 {
 	// LCD_UsrLog("%s", ESP8266_Buff.RX_READ);
-	if (ESP8266_STATUS == ESP8266_ST_UNKNOWN_CODE) {
+	if (ESP8266_AT_STATUS == ESP8266_ST_UNKNOWN_CODE) {
 		esp8266_response();
 	}
 	STM_EVAL_LEDToggle(LED4);

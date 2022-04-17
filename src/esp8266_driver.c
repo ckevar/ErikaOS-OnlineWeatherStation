@@ -17,8 +17,9 @@
 													while((~DMA2_Stream6->CR & 0x01)) DMA2_Stream6->CR |= DMA_SxCR_EN;
 
 
-unsigned char ESP8266_STATUS = ESP8266_ST_UNKNOWN_CODE; 
-unsigned char ESP8266_STATUS_TCP = ESP8266_ST_UNKNOWN_CODE; 
+char ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE; 
+char ESP8266_STATUS_TCP = ESP8266_ST_UNKNOWN_CODE;
+char ESP8266_STATUS = ESP8266_ST_UNKNOWN_CODE;
 
 static void esp8266_USART_RX_DMA_Init(char *BUFF_L, uint16_t size);
 static void esp8266_USART_TX_DMA_Init(void);
@@ -188,14 +189,9 @@ static void esp8266_dma_cmd_mul_param(char *cmd, unsigned short cmd_len, char *a
 		cmd_len += arg_len;
 		*(esp8266_dma_buff + cmd_len) = 13;
 		*(esp8266_dma_buff + cmd_len + 1) = 10;
-		// esp8266_cmd_at_add_CR_NL(cmd_len + arg_len);
 		cmd_len += 2;
-		// arg_len += 2;
 	} 
-	// else
-	// 	arg_len = 0;
 
-	// esp8266_dma_set_length_and_enableTX(cmd_len + arg_len);	
 	esp8266_dma_set_length_and_enableTX(cmd_len);	
 }
 
@@ -560,43 +556,43 @@ void esp8266_response(void) {
 
 	if (ESP8266_IPD_DATA_STATUS == ESP8266_IPD_DATA_OK2PARSE) {
 		if(esp8266_http_parse(buff_link))
-			ESP8266_STATUS = ESP8266_ST_ERROR_CODE;
+			ESP8266_AT_STATUS = ESP8266_ST_ERROR_CODE;
 		ESP8266_IPD_DATA_STATUS = ESP8266_IPD_DATA_UKNOWN;
 	}
 
 	while(*buff_tmp->RX_READ != 0) {
 
 		if (*buff_tmp->RX_READ == '>') {
-			ESP8266_STATUS = ESP8266_ST_WRAP_CODE;
+			ESP8266_AT_STATUS = ESP8266_ST_WRAP_CODE;
 		}
 
 		else if (memcmp(buff_tmp->RX_READ, ESP8266_ST_READY, ESP8266_ST_READY_LEN) == 0) {
-				ESP8266_STATUS = ESP8266_ST_RESTART_CODE;
+				ESP8266_AT_STATUS = ESP8266_ST_RESTART_CODE;
 				ESP8266_SET_RESTART = 0;
 				esp8266_buff_clean_and_increment(5);
 				return;
 		}
 
 		else if (memcmp(buff_tmp->RX_READ, ESP8266_ST_OK, ESP8266_ST_OK_LEN) == 0) {
-			ESP8266_STATUS = ESP8266_ST_OK_CODE;
+			ESP8266_AT_STATUS = ESP8266_ST_OK_CODE;
 			esp8266_buff_clean_and_increment(ESP8266_ST_OK_LEN);
 			return;
 		}
 
 		else if(memcmp(buff_tmp->RX_READ, ESP8266_ST_FAIL, ESP8266_ST_FAIL_LEN) == 0) {
-			ESP8266_STATUS = ESP8266_ST_FAIL_CODE;
+			ESP8266_AT_STATUS = ESP8266_ST_FAIL_CODE;
 			esp8266_buff_clean_and_increment(ESP8266_ST_FAIL_LEN);
 			return;
 		}
 		
 		else if(memcmp(buff_tmp->RX_READ, ESP8266_ST_ERROR, ESP8266_ST_ERROR_LEN) == 0) {
-			ESP8266_STATUS = ESP8266_ST_ERROR_CODE;
+			ESP8266_AT_STATUS = ESP8266_ST_ERROR_CODE;
 			esp8266_buff_clean_and_increment(ESP8266_ST_ERROR_LEN);
 			return;
 		}
 
 		else if (memcmp(buff_tmp->RX_READ + 2, ESP8266_ST_HTTP_CLOSED, ESP8266_ST_HTTP_CLOSED_LEN) == 0) {
-			ESP8266_STATUS = ESP8266_ST_HTTP_CLOSED_CODE;
+			ESP8266_AT_STATUS = ESP8266_ST_HTTP_CLOSED_CODE;
 			char i = 0;
 			char link = (*(buff_tmp->RX_READ) < 47) ? 0 : *(buff_tmp->RX_READ) - 47;			
 			while(ESP8266_link.open[i] != link) ++i;
@@ -612,11 +608,14 @@ void esp8266_response(void) {
 				return;
 			}
 		} else if (memcmp(buff_tmp->RX_READ, ESP8266_ST_CIPSTATE_CUR_IP, ESP8266_ST_CIPSTATE_CUR_IP_LEN) == 0) {
-			ESP8266_STATUS = ESP8266_ST_CIPSTATE_CUR_CODE;
+			ESP8266_AT_STATUS = ESP8266_ST_CIPSTATE_CUR_CODE;
 			esp8266_cipstate_parse();
 			return;
-		}
 
+		} else if (memcmp(buff_tmp->RX_READ, ESP8266_ST_CIPSTATUS_STATUS_STR, ESP8266_ST_CIPSTATUS_STATUS_LEN) == 0) {
+			esp8266_buff_clean_and_increment(ESP8266_ST_CIPSTATUS_STATUS_LEN);
+			ESP8266_STATUS = *buff_tmp->RX_READ;
+		}
 
 		esp8266_buff_clean_and_increment(1);
 	}

@@ -18,36 +18,38 @@
 #define APP_FSM_SET_CWMODE_STATION 		2	// set WiFi as station mode
 #define APP_FSM_SET_CIPMUX				3	// State as single connection
 #define APP_FSM_WIFI_CONN				4	// State to connect to a WiFi
+#define APP_FSM_CHECK_TCP_CONNECTION 	5
+#define APP_FSM_CLOSE_TCP_CONNS_IF_OPEN 6
 
 	// States to get IP Location
-#define APP_FSM_SET_IPAPI_CIPSTART		5	// State where connection with Ip-api stablishes
-#define APP_FSM_SET_IPAPI_CIPSEND		6 	// State where length of the data to submit is set
-#define APP_FSM_SET_IPAPI_REQ_LOCATION 	7 	// State where location of the IP is set 
-#define APP_FSM_CLOSE_IPAPI_CONNECTION 	8
+#define APP_FSM_SET_IPAPI_CIPSTART		7	// State where connection with Ip-api stablishes
+#define APP_FSM_SET_IPAPI_CIPSEND		8 	// State where length of the data to submit is set
+#define APP_FSM_SET_IPAPI_REQ_LOCATION 	9 	// State where location of the IP is set 
+#define APP_FSM_CLOSE_IPAPI_CONNECTION 	10
 
 	// States to get weather info
-#define APP_FSM_SET_OW_API_CIPSTART 	9 	// State where connection with openweather.org
-#define APP_FSM_SET_OW_API_CIPSEND 		10 	// state where length of data to submit is set
-#define APP_FSM_SET_OW_API_REQ_WEATHER 	11 	// states where weather info is required
-#define APP_FSM_CLOSE_OW_API_CONNECTION 12
+#define APP_FSM_SET_OW_API_CIPSTART 	11 	// State where connection with openweather.org
+#define APP_FSM_SET_OW_API_CIPSEND 		12 	// state where length of data to submit is set
+#define APP_FSM_SET_OW_API_REQ_WEATHER 	13 	// states where weather info is required
+#define APP_FSM_CLOSE_OW_API_CONNECTION 14
 
-#define APP_FSM_IDDLE 					13
+#define APP_FSM_IDDLE 					15
 
-#define APP_FSM_AP_RESET 				14 	// State to enable ESP8266 as WiFi
-#define APP_FSM_AP_RESTART 				15 	// State to enable ESP8266 as WiFi
-#define APP_FSM_AP_DUMMY_WAIT 			16
-#define APP_FSM_SET_AP 					17 	// State to enable ESP8266 as WiFi
-#define APP_FSM_SET_WPA 				18 	// state to set WPA SSID and Password
-#define APP_FSM_SET_AP_CISTATUS 		19 	// State to enable multiple connections
-#define APP_FSM_SET_AP_CIPMUX 			20 	// State to enable multiple connections
-#define APP_FSM_SET_AP_SERVER 			21  // State to enable HTTP server
-#define APP_FSM_WEBAPP_OK_CLIENT0   	22 	// to sent the welcome page
-#define APP_FSM_WEBAPP_OK_CLIENT1   	23 	// to sent the welcome page
-#define APP_FSM_CLEAN_AP_BUFFER 		24
-#define APP_FSM_TRY_NEW_SSID_AND_PASSWORD 	25
-#define APP_FSM_NEW_SSIDnPSWD_CONNECTED		26
-#define APP_FSM_TRY_AGAIN_WA_SSID_AND_PASSWORD 27
-#define APP_FSM_SHUTDOWN_WEBSERVER		28
+#define APP_FSM_AP_RESET 				16 	// State to enable ESP8266 as WiFi
+#define APP_FSM_AP_RESTART 				17 	// State to enable ESP8266 as WiFi
+#define APP_FSM_AP_DUMMY_WAIT 			18
+#define APP_FSM_SET_AP 					19 	// State to enable ESP8266 as WiFi
+#define APP_FSM_SET_WPA 				20 	// state to set WPA SSID and Password
+#define APP_FSM_SET_AP_CISTATUS 		21 	// State to enable multiple connections
+#define APP_FSM_SET_AP_CIPMUX 			22 	// State to enable multiple connections
+#define APP_FSM_SET_AP_SERVER 			23  // State to enable HTTP server
+#define APP_FSM_WEBAPP_OK_CLIENT0   	24 	// to sent the welcome page
+#define APP_FSM_WEBAPP_OK_CLIENT1   	25 	// to sent the welcome page
+#define APP_FSM_CLEAN_AP_BUFFER 		26
+#define APP_FSM_TRY_NEW_SSID_AND_PASSWORD 	27
+#define APP_FSM_NEW_SSIDnPSWD_CONNECTED		28
+#define APP_FSM_TRY_AGAIN_WA_SSID_AND_PASSWORD 29
+#define APP_FSM_SHUTDOWN_WEBSERVER		30
 
 #define APP_FSM_SUPER_NORMAL			0
 #define APP_FSM_SUPER_SETTINGS 			1

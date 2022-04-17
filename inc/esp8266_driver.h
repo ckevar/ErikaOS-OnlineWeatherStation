@@ -108,6 +108,13 @@
 #define ESP8266_ST_CIPSTATE_CUR_IP_LEN 	14
 #define ESP8266_ST_CIPSTATE_CUR_CODE 	9
 
+#define ESP8266_ST_CIPSTATUS_STATUS_STR "STATUS:"
+#define ESP8266_ST_CIPSTATUS_STATUS_LEN 7
+#define ESP8266_CIPSTATUS_APnIP_READY 	'2'
+#define ESP8266_CIPSTATUS_TcpUdp_READY 	'3'
+#define ESP8266_CIPSTATUS_TcpUdp_DISCON '4'
+#define ESP8266_CIPSTATUS_AP_NO_CONN 	'5'
+
 /* Settings values */
 #define ESP8266_CWMODE_STATION 			'1'	
 #define ESP8266_CWMODE_SOFTAP 			'2'	
@@ -153,9 +160,9 @@ typedef struct ESP8266_IPv4_t
 } ESP8266_IPv4_t;
 
 /* ESP8266 Variables */
-extern unsigned char ESP8266_STATUS;
-extern unsigned char ESP8266_STATUS_TCP;
-extern unsigned char ESP8266_STATUS_CWSTATE;
+extern char ESP8266_AT_STATUS;
+extern char ESP8266_STATUS_TCP;
+extern char ESP8266_STATUS;
 extern ESP8266_Link_t ESP8266_link;
 extern ESP8266_IPv4_t ESP8266_IPv4;
 
