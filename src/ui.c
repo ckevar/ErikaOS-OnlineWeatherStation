@@ -367,7 +367,7 @@ void UI_SettingsOff(void) {
 /*******************************************************/
 
 void UI_WriteState(char *str){
-	LCD_DrawFullRect(5, 230, 300, 8);
+	LCD_DrawFullRect(5, 228, 300, 8);
 	WPrintLog(&weather_ui[STATE_DEV_STR], str);	
 }
 /*
