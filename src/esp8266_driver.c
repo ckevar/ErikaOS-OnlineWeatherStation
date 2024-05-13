@@ -65,7 +65,7 @@ void esp8266_init(void) {
     esp8.data = esp8_RX;
 	esp8.read = esp8.data;
 	esp8.size = ESP8266_BUFF_RX_LEN;
-	esp8.eof = esp8.data + esp8.size;
+	esp8.eof = esp8.data + esp8.size - 1;
 	esp8266_USART_RX_DMA_Init(esp8.data, esp8.size);
 
 	/* Start Link Buffer */
@@ -319,10 +319,15 @@ void esp8266_clean_link_buff(char link) {
 static void esp8266_buff_clean_and_increment(unsigned short it) {
 	while (it) {	
 		*esp8.read = 0;
+        /*
 		esp8.read++;
 
 		if (esp8.read == esp8.eof)
 			esp8.read = esp8.data;
+        */
+        esp8.read = esp8.read == esp8.eof \
+                    ? esp8.data \
+                    : esp8.read + 1;
 		it--;
 	}
 }
@@ -391,7 +396,7 @@ static unsigned short esp8266_http_query_ContentLength(void) {
 
 	while((ch2cmp_offset < 16) && (*esp8.read != 0)) {
 
-		dist = esp8.eof - esp8.read;
+		dist = esp8.eof - esp8.read + 1;
 		ch2cmp = (dist > 16) ? 16 - ch2cmp_offset : dist;
 
 		if (memcmp(esp8.read, content_length + ch2cmp_offset, ch2cmp) == 0){
@@ -429,7 +434,7 @@ static void esp8266_http_query_Content(char *content, unsigned short len) {
 
 	// If there's plenty of available space in the buffer, the memory can be copied out
 	// in a single big chunk, otherwise, it gotta be copied in two chuncks.
-	rns = esp8.eof - esp8.read;
+	rns = esp8.eof - esp8.read + 1;
 
 	if (len > rns) {
 		memcpy(content, esp8.read, rns);

@@ -514,10 +514,10 @@ static short fsm_on_err_fail(const short state, const char wifi_state) {
  * to connect with an Access Point.
  */
 void app_fsm_app(void) {
-	/* static short APP_FSM_CURR_STATE = APP_FSM_START;
-	static short APP_FSM_PREV_STATE = APP_FSM_START; */
+	static short APP_FSM_CURR_STATE = APP_FSM_START;
+	static short APP_FSM_PREV_STATE = APP_FSM_START; /*
     static short APP_FSM_CURR_STATE = APP_FSM_AP_RESTART;
-	static short APP_FSM_PREV_STATE = APP_FSM_AP_RESTART;
+	static short APP_FSM_PREV_STATE = APP_FSM_AP_RESTART;*/
     static char WIFI_SET = WiFi_NO_CONNECTED;
 
 	/* SSID AND PSW for ESP */
