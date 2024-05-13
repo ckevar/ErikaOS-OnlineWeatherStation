@@ -1,4 +1,5 @@
-include usr.mk
+include user.mk
+
 
 ############################################################################
 #
@@ -98,7 +99,7 @@ EEBASE := ${ERIKA_FILES}
 else # ERIKA_FILES
 
 ifndef EEBASE
-        EEBASE := /home/ckevar/Apps/Erika-CLI/plugins/com.eu.evidence.ee_2.8.0.20171025_0922/ee_files
+        EEBASE := /home/chris/.local/RT-Druid/plugins/com.eu.evidence.ee_2.8.0.20171025_0922/ee_files
 else
         $(warning The usage of EEBASE is deprecated. Please use ERIKA_FILES)
 endif

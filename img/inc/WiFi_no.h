@@ -8,7 +8,7 @@
 #ifndef _WiFi_no_H_
 #define _WiFi_no_H_
 
-extern const unsigned char WiFi_no[1854];
+extern const unsigned char WiFi_no[2586];
 
 #endif
 /********* GNU Licence - END OF FILE *********/

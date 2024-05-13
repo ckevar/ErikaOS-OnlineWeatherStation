@@ -62,10 +62,10 @@
 #include "STMPE811QTR.h"
 
 #include <stdio.h>
+#include <string.h>
 
 
-
-ESP8266_BUFF_t ESP8266_Buff;
+// ESP8266_BUFF_t ESP8266_Buff;
 
 /*
  * SysTick ISR2
@@ -76,15 +76,37 @@ ISR2(systick_handler)
 	CounterTick(myCounter);
 }
 
-TASK(TaskLCDTouch) {
-	unsigned int px, py;
-	TPoint p;
-	if(GetTouch_SC_Async(&px, &py)) {
-		p.x = px;
-		p.y = py;
-		OnTouch(weather_ui, &p);
-	}
+uint32_t xarray[512];
+uint32_t yarray[512];
 
+TASK(TaskLCDTouch) {
+    static unsigned int px, py;
+    static uint8_t pv_sw = 0;
+    uint8_t sw = 0;
+	TPoint p;
+    static uint16_t i = 0;
+
+	if(GetTouch_SC_Async(&px, &py)) {
+        sw = 1;
+        xarray[i] = px;
+        yarray[i] = py;
+        i = i + 1;
+        if (i == 512) {
+            i = 0;
+            memset(xarray, 0, 512);
+            memset(yarray, 0, 512);
+        }
+    }
+
+    if (pv_sw > sw) {
+        p.x = px;
+        p.y = py;
+		OnTouch(weather_ui, &p);
+        memset(xarray, 0, 512);
+        memset(yarray, 0, 512);
+    }
+        
+    pv_sw = sw;
 }
 /**
  * This search for specific words in the message received, but it looks
@@ -105,8 +127,7 @@ TASK(Task_ESP82266_RevResponse)
 /**
  * Task used for FSM.
  */
-TASK(Task_ESP8266_FSM)
-{
+TASK(Task_ESP8266_FSM) {
 	app_fsm_app();
 }
 
@@ -171,7 +192,7 @@ int main(void)
 	STM_EVAL_LEDInit(LED4);
 
 	/* ESP8266 init */
-	esp8266_init(&ESP8266_Buff); 	// Loads the buffer into the driver
+	esp8266_init(); 	// Loads the buffer into the driver
 									// module. 
 
 	/* Init Touchscreen */
@@ -182,7 +203,9 @@ int main(void)
 	// LCD_LOG_Init();
 
 	/**** LCD Calibration Data got with : lcd_touch project ***/
-	InitTouch(-0.096, 0.0650, -367, 15);
+	//InitTouch(-0.096, 0.0650, -367, 15);
+	InitTouch(-0.1247, 0.0650, -348, 15);
+
 
 	/*********************************************************** 
 	 * Tool to choose color in 16 bits RGB (5:6:5) 
@@ -198,7 +221,8 @@ int main(void)
 	SetRelAlarm(AlarmTaskLCDTouch, 1, 50);
 	SetRelAlarm(Alarm_ESP82266_RevResponse, 1, 40);
 	SetRelAlarm(Alarm_ESP8266_FSM, 15, 80);
-	SetRelAlarm(Alarm_Weather_Update, 180000, 180000);
+	// SetRelAlarm(Alarm_Weather_Update, 180000, 180000);
+	SetRelAlarm(Alarm_Weather_Update, 45000, 45000);
 
 	for (;;) {
 	}

@@ -42,11 +42,13 @@
 // #define SWATCHMODE 	0x04
 // #define PLUS 		0x10
 // #define MINUS 		0x20
+//
+// 0xb798 -> This is background color in a lazy way
+#define APP_BACKGROUND_COLOR 		0x7f12
 
-#define APP_BACKGROUND_COLOR 		0x7E97
-#define UI_CLEAN_PROGRESS_BAR_COLOR 0xDFFB
-#define UI_PROGRESS_BAR_COLOR 		0x11A5
-#define UI_ERR_PROGRESS_BAR_COLOR 	0xB962
+#define UI_CLEAN_PROGRESS_BAR_COLOR 0xffff
+#define UI_PROGRESS_BAR_COLOR 		0x0962
+#define UI_ERR_PROGRESS_BAR_COLOR 	0x8020
 
 extern Widget weather_ui[NUMWIDGETS];
 

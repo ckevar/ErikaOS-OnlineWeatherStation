@@ -46,7 +46,7 @@
 #include "lcd_log.h"
 
 
-static unsigned char *temp_number[10] = {zero, one, two, three, four, five, six, seven, eight, nine};
+const static unsigned char *temp_number[10] = {zero, one, two, three, four, five, six, seven, eight, nine};
 
 Image location_icon = {
 	.image = (unsigned char *)no_location
@@ -117,21 +117,24 @@ Text state_dev = {
 
 Widget weather_ui[NUMWIDGETS] = {
 	// Pos Y, pos X, dim x, dim y, type, pointer of the text
-	{18, 23, 20, 20, IMAGE, (void *)&location_icon},
-	{24, 43, 24, 24, TEXT, (void *)&city},
-	{224, 24, 30, 30, BUTTONICON, (void *)&WiFi_icon},
-	{270, 24, 30, 30, BUTTONICON, (void *)&WiFi_AP_icon},
-	{61, 17, 8, 8, TEXT, (void *)&description},
-	{144, 285, 24, 24, TEXT, (void *)&temp_degree},
-	{189, 141, 12, 12, TEXT, (void *)&feels},
-	{201, 141, 12, 12, TEXT, (void *)&like},
-	{189, 220, 12, 12, TEXT, (void *)&feels_like_tmp},
-	{189, 285, 24, 24, TEXT, (void *)&temp_val},
-	{17, 86, 100, 100, IMAGE, (void *)&OW_description_img},
-	{123, 110, 54, 54, IMAGE, (void *)&temp_sign}, 
-	{177, 110, 54, 54, IMAGE, (void *)&temp_dec_img},
-	{231, 110, 54, 54, IMAGE, (void *)&temp_uni_img},
-	{230, 5, 8, 8, TEXT, (void *) &state_dev},
+	{12, 13, 20, 20, IMAGE, (void *)&location_icon},
+	{13, 40, 24, 24, TEXT, (void *)&city},
+	// {115, 187, 30, 30, BUTTONICON, (void *)&WiFi_icon},
+	{52, 183, 42, 30, BUTTONICON, (void *)&WiFi_icon},
+	{145, 183, 30, 30, BUTTONICON, (void *)&WiFi_AP_icon},
+	// {61, 17, 8, 8, TEXT, (void *)&description},
+	{143, 13, 8, 8, TEXT, (void *)&description},
+	{79, 285, 24, 24, TEXT, (void *)&temp_degree},
+	{124, 141, 12, 12, TEXT, (void *)&feels},
+	{136, 141, 12, 12, TEXT, (void *)&like},
+	{124, 220, 12, 12, TEXT, (void *)&feels_like_tmp},
+	{124, 285, 24, 24, TEXT, (void *)&temp_val},
+	// {17, 86, 100, 100, IMAGE, (void *)&OW_description_img},
+	{19, 32, 100, 100, IMAGE, (void *)&OW_description_img},
+	{123, 45, 54, 54, IMAGE, (void *)&temp_sign}, 
+	{177, 45, 54, 54, IMAGE, (void *)&temp_dec_img},
+	{231, 45, 54, 54, IMAGE, (void *)&temp_uni_img},
+	{228, 5, 8, 8, TEXT, (void *) &state_dev},
 };
 
 void DrawFixWidgets(){
@@ -140,19 +143,36 @@ void DrawFixWidgets(){
 	WPrint(&weather_ui[LIKE_STR], " like");	
 	WPrint(&weather_ui[TEMP_DEGREE2_STR], "C");	
 
+    LCD_SetColors(0x3b2d, 0x3b2d);
+    LCD_DrawFullRect(36, 172, 248, 51);
+    LCD_SetColors(0x03dd, 0x03d2d);
+    LCD_DrawFullRect(36, 223, 248, 1);
+    LCD_SetColors(0x0E2d, 0x0E2d);
+    LCD_DrawFullRect(36, 224, 248, 1);
+
+    LCD_SetColors(0xEFEF, 0xEFEF);
+    LCD_DrawFullRect(0, 0, 30, 30);
+    LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
+
+    DrawOff(&weather_ui[3]);
 }
 
 /**************** PROGRESS BAR FUNCTIONS ***************/
+#define PROGRESS_BAR_Y          237
+#define PROGRESS_BAR_THICKNESS  3
+
 static void set_progress_bar(short state, short max_state, unsigned short colors_bar) {
 	unsigned short bar = (state * 320) / max_state; 
+    if (bar > 320)
+        bar = 0;
 	LCD_SetColors(colors_bar, colors_bar);
-	LCD_DrawFullRect(0, 79, bar, 3);
+	LCD_DrawFullRect(0, PROGRESS_BAR_Y, bar, PROGRESS_BAR_THICKNESS);
 	LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
 }
 
 void UI_clear_progress() {
 	LCD_SetColors(UI_CLEAN_PROGRESS_BAR_COLOR, UI_CLEAN_PROGRESS_BAR_COLOR);
-	LCD_DrawFullRect(0, 79, 320, 3);
+	LCD_DrawFullRect(0, PROGRESS_BAR_Y, 320, PROGRESS_BAR_THICKNESS);
 	LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
 }
 

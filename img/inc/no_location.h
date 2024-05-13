@@ -8,7 +8,7 @@
 #ifndef _no_location_H_
 #define _no_location_H_
 
-extern const unsigned char no_location[854];
+extern const unsigned char no_location[866];
 
 #endif
 /********* GNU Licence - END OF FILE *********/

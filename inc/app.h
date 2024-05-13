@@ -31,9 +31,10 @@
 #define APP_FSM_SET_OW_API_CIPSTART 	11 	// State where connection with openweather.org
 #define APP_FSM_SET_OW_API_CIPSEND 		12 	// state where length of data to submit is set
 #define APP_FSM_SET_OW_API_REQ_WEATHER 	13 	// states where weather info is required
+#define APP_FSM_SET_OW_API_TRANSITION   31
 #define APP_FSM_CLOSE_OW_API_CONNECTION 14
 
-#define APP_FSM_IDDLE 					15
+#define APP_FSM_IDLE 					15
 
 #define APP_FSM_AP_RESET 				16 	// State to enable ESP8266 as WiFi
 #define APP_FSM_AP_RESTART 				17 	// State to enable ESP8266 as WiFi

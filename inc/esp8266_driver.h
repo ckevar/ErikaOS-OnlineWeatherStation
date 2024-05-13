@@ -36,8 +36,9 @@
 #define ESP8266_AT_CIPMUX 				"AT+CIPMUX="
 #define ESP8266_AT_CIPMUX_LEN 			10
 
-#define ESP8266_AT_CIPSTART_TCP 		"AT+CIPSTART=\"TCP\","
-#define ESP8266_AT_CIPSTART_TCP_LEN 	18
+#define ESP8266_AT_CIPSTART_TCP 		"AT+CIPSTART=x,\"TCP\","
+#define ESP8266_AT_CIPSTART_TCP_LEN 	20
+#define ESP8266_AT_CIPSTART_TCP_LINK    12
 
 #define ESP8266_AT_CIPSEND_NONMUX 		"AT+CIPSEND="
 #define ESP8266_AT_CIPSEND_NONMUX_LEN 	11
@@ -134,13 +135,17 @@
 #define ESP8266_IPD_DATA_MISSING 	1
 #define ESP8266_IPD_DATA_OK2PARSE 	2
 
+/* STATUS TCP */
+#define ESP8266_TCP_BUFF_FULL       0b01
+#define ESP8266_TCP_PORT_CLOSE      0b10
+
 /* ESP8266 Types */
-typedef struct ESP8266_BUFF_t {
-	char RX0[ESP8266_BUFF_RX_LEN];
-	char *RX_READ;
-	char *RX_END;
-	unsigned short RX_LENGTH;
-} ESP8266_BUFF_t;
+typedef struct {
+	char *data;
+	char *read;
+	char *eof;
+	unsigned short size;
+} Buffer;
 
 typedef struct ESP8266_Link_t
 {
@@ -167,7 +172,7 @@ extern ESP8266_Link_t ESP8266_link;
 extern ESP8266_IPv4_t ESP8266_IPv4;
 
 /* Functions */
-void esp8266_init(ESP8266_BUFF_t *buff);
+void esp8266_init(void);
 void esp8266_cmd(char *str);
 
 void esp8266_at(void);
@@ -178,7 +183,7 @@ void esp8266_gmr(void);
 void esp8266_set_CWMODE(char mode);
 void esp8266_set_CIPMUX(char mux);
 void esp8266_set_SSID_and_PASS(char *ssid_and_pass, unsigned short len);
-void esp8266_set_DNS(char *dns, unsigned short len);
+void esp8266_set_DNS(char link, char *dns, unsigned short len);
 void esp8266_set_CIPSEND(char *len_of_data, unsigned short len);
 void esp8266_set_CIPSEND_link(char link, char *len_of_data, unsigned short len);
 void esp8266_set_CWSAP(char *cmd, unsigned short len);

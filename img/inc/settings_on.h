@@ -8,7 +8,7 @@
 #ifndef _settings_on_H_
 #define _settings_on_H_
 
-extern const unsigned char settings_on[1854];
+extern const unsigned char settings_on[1866];
 
 #endif
 /********* GNU Licence - END OF FILE *********/

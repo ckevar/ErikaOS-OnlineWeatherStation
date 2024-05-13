@@ -8,7 +8,7 @@
 #ifndef _WiFi_connected_H_
 #define _WiFi_connected_H_
 
-extern const unsigned char WiFi_connected[1854];
+extern const unsigned char WiFi_connected[2586];
 
 #endif
 /********* GNU Licence - END OF FILE *********/

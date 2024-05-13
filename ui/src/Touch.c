@@ -10,6 +10,7 @@
 #include "STMPE811QTR.h"
 #include "Touch.h"
 #include <stdio.h>
+#include <string.h>
 
 #define TOUCH_AD_VALUE_MAX    (4500)
 #define TOUCH_AD_VALUE_MIN    (30)
@@ -96,32 +97,104 @@ unsigned char  Lcd_Touch_Calibration()
 	}
 }
 
-unsigned char  GetTouch_TC_Async(int *xs, int *ys)
-{
-	int tpx, tpy;
+/* 
+ * FILTER:
+ * ------
+ * This module runs two filter, based on updated state equation:
+ *
+ *      X_hat[k] = X_hat[k - 1] + alpha * (x_measured - X_hat[k - 1])
+ *
+ *  Y-Axis
+ *  ------
+ * Data analysis shows that the points on Y-axis are easily denoised
+ * with the previous equation with an alpha value (0.2) such that the
+ * trade-off between a settling time less than a second and a precision
+ * that ranges 6 pixels.
+ *
+ *  X-Axis
+ *  ------
+ * On the other hand, the x-axis data requires a lower alpha in order
+ * to have a precision comparable to y-axis' behaviour. Keep in mind
+ * a lower alpha rises the settling time, in this case up to 2.4 
+ * seconds with a precision that ranges 20 pixels. (smaller than the
+ * sizes of the buttons we have - 30x30px -).
+ * In order to get rid of the 2.4 sec response, alpha was made variable
+ * over time. and it's restarted everytime there's a touch event.
+ *
+ *           alpha0 - alpha1
+ * alpha_t = --------------- + alpha1
+ *            sigma * t + 1
+ * 
+ * such that alpha1 > 0, alpha0 > alpha1, sigma > 0,
+ *
+ * alpha_0: The initial alpha and it's recomended to be larger than
+ *          alpha_1, so the filter has a faster response but poor
+ *          denoising ability. 
+ *
+ * alpha_1: The target alpha, it's the value that performes well over.
+ * 
+ * sigma:   The rate of decrease, how fast alpha0 is going to alpha1.
+ *
+ * author: C. Alvarado
+ *
+ * { */
+#define ALPHA_Y     0.2
+#define ALPHA_X     0.03
+#define ALPHA10_X   11.995  // alpha1 - alpha0
+#define ALPHA1_X    0.005 
+#define SIGMA_X     200.0
+
+void state_update_extended(int *x, int *y, uint8_t *trigger) {
+    static int16_t x_estimated = 0;
+    static int16_t y_estimated = 0;
+    static float t = 0.0;
+    float alpha_x;
+    
+    t = (*trigger & 1 == 0) ? 0.0 : t + 0.05;
+    *trigger = (*trigger << 1) | 1;
+
+    alpha_x = ALPHA1_X + ALPHA10_X / (SIGMA_X * t + 1.0);
+
+    x_estimated = x_estimated + alpha_x * (*x - x_estimated);
+    y_estimated = y_estimated + ALPHA_Y * (*y - y_estimated);
+    
+    *x = x_estimated;
+    *y = y_estimated;
+}
+
+/* } */
+
+unsigned char  GetTouch_TC_Async(int *xs, int *ys) {
+     /* Filter Params */
+    static uint8_t trigger = 0;
 	TS_STATE *pstate = NULL;
 
     pstate = IOE_TS_GetState();
-	if (pstate->TouchDetected) {
+
+   	if (pstate->TouchDetected) {
 	    /*Read AD convert result*/
-	    /* no filtering */
 	    *xs = IOE_TS_Read_X();
 	    *ys = IOE_TS_Read_Y();
-	    if ((*xs > TOUCH_AD_VALUE_MAX)
+
+        /* State Update Filtering */
+        state_update_extended(xs, ys, &trigger);
+
+        if ((*xs > TOUCH_AD_VALUE_MAX)
 	        || (*xs < TOUCH_AD_VALUE_MIN)
 	        || (*ys > TOUCH_AD_VALUE_MAX)
 	        || (*ys < TOUCH_AD_VALUE_MIN))
 	    	return 0;
 	    else
 	    	return 1;
-    } else
-    	return 0;
+    }
+
+    trigger = 0;
+
+    return 0;
 }
 
 unsigned char  GetTouch_TC_Sync(int *xs, int *ys)
 {
-	int tpx, tpy;
-
 	TS_STATE *pstate = NULL;
     do {
       pstate = IOE_TS_GetState();
@@ -149,17 +222,22 @@ unsigned char  GetTouch_SC_Async(unsigned int *xs, unsigned int *ys)
 	char str[30];
 
 	if (GetTouch_TC_Async(&tpx, &tpy)) {
-	    *xs = (unsigned int)(tpx * tcs.xScale - tcs.xOffset);
-	    *ys = (unsigned int)(tpy * tcs.yScale - tcs.yOffset);
-		if ((*xs > xScreenSize)
-	        || (*xs < 0)
-	        || (*ys > yScreenSize)
-	        || (*ys < 0))
+	    tpx = tpx * tcs.xScale - tcs.xOffset;
+	    tpy = tpy * tcs.yScale - tcs.yOffset;
+        *ys = (unsigned int) tpy;
+        *xs = (unsigned int) tpx;
+
+        if ((*xs > xScreenSize) || \
+            (*xs < 0) || \
+            (*ys > yScreenSize) || \
+            (*ys < 0)) {
 	    	return 0;
-	    else
-	    	return 1;
-    } else
-    	return 0;
+        }
+
+	    return 1;
+    }
+
+    return 0;
 }
 
 unsigned char  GetTouch_SC_Sync(unsigned int *xs, unsigned int *ys)

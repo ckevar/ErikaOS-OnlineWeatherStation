@@ -22,18 +22,17 @@ unsigned char contains(Widget *w, TPoint *point){
 }
 
 unsigned char OnTouch(Widget ws[], TPoint *press){
-	unsigned char i, res;
+	unsigned char i;
 
-	res = 0;
-	for(i=0; i<NUMWIDGETS; i++) {
+	for(i = 0; i < NUMWIDGETS; i++) {
 		if (ws[i].wt == BUTTONICON) {
 			if(contains(&ws[i], press)) {
 				SetEvent(biconinfo(&ws[i])->onpress);
- 			    res = 1;
+                return 1;
  			}
 		}
 	}
-	return res;
+	return 0;
 }
 
 unsigned char DrawInit(Widget ws[])

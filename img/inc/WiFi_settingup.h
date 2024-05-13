@@ -8,7 +8,7 @@
 #ifndef _WiFi_settingup_H_
 #define _WiFi_settingup_H_
 
-extern const unsigned char WiFi_settingup[1854];
+extern const unsigned char WiFi_settingup[2586];
 
 #endif
 /********* GNU Licence - END OF FILE *********/
