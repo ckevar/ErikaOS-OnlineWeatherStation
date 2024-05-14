@@ -117,7 +117,7 @@ TASK(TaskLCDTouch) {
 TASK(Task_ESP82266_RevResponse)
 {
 	// LCD_UsrLog("%s", ESP8266_Buff.RX_READ);
-	if (ESP8266_AT_STATUS == ESP8266_ST_UNKNOWN_CODE) {
+	if (esp8_status.cmd == ESP8_UNKNOWN) {
 		esp8266_response();
 	}
 	STM_EVAL_LEDToggle(LED4);

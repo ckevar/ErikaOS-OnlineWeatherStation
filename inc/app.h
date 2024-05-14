@@ -22,17 +22,18 @@
 #define APP_FSM_CLOSE_TCP_CONNS_IF_OPEN 6
 
 	// States to get IP Location
-#define APP_FSM_SET_IPAPI_CIPSTART		7	// State where connection with Ip-api stablishes
-#define APP_FSM_SET_IPAPI_CIPSEND		8 	// State where length of the data to submit is set
-#define APP_FSM_SET_IPAPI_REQ_LOCATION 	9 	// State where location of the IP is set 
-#define APP_FSM_CLOSE_IPAPI_CONNECTION 	10
+#define APP_FSM_IPAPI_CIPSTART		    7	// State where connection with Ip-api stablishes
+#define APP_FSM_IPAPI_CIPSEND		    8 	// State where length of the data to submit is set
+#define APP_FSM_IPAPI_REQ_LOCATION 	    9 	// State where location of the IP is set 
+#define APP_FSM_CLOSE_IPAPI 	        10
 
 	// States to get weather info
-#define APP_FSM_SET_OW_API_CIPSTART 	11 	// State where connection with openweather.org
-#define APP_FSM_SET_OW_API_CIPSEND 		12 	// state where length of data to submit is set
-#define APP_FSM_SET_OW_API_REQ_WEATHER 	13 	// states where weather info is required
-#define APP_FSM_SET_OW_API_TRANSITION   31
-#define APP_FSM_CLOSE_OW_API_CONNECTION 14
+#define APP_FSM_OW_API_CIPSTART 	    11 	// State where connection with openweather.org
+#define APP_FSM_OW_API_CIPSEND 		    12 	// state where length of data to submit is set
+#define APP_FSM_OW_API_REQ_WEATHER 	    13 	// states where weather info is required
+#define APP_FSM_CLOSE_OW_API            14
+
+    // states to get spotify info
 
 #define APP_FSM_IDLE 					15
 

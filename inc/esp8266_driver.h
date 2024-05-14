@@ -9,6 +9,8 @@
 #ifndef ESP8266_DRIVER_H
 #define ESP8266_DRIVER_H 
 
+#include "esp8266_responses.h"
+
 // ESP8266 Software definitions
 #define ESP8266_NUM_LINK 		5
 #define ESP8266_BUFF_PER_LINK 	256
@@ -73,7 +75,8 @@
 #define ESP8266_AT_CWSAP 				"AT+CWSAP_DEF="
 #define ESP8266_AT_CWSAP_LEN			13
 
-/* ESP8266 AT command responses */
+
+/* ESP8266 AT command responses
 #define ESP8266_ST_OK 			"OK" 	// ESP8266 OK reply
 #define ESP8266_ST_OK_LEN 		2		// ESP8266 OK's length
 #define ESP8266_ST_OK_CODE 		1		// ESP8266 OK internal status ID
@@ -115,7 +118,7 @@
 #define ESP8266_CIPSTATUS_TcpUdp_READY 	'3'
 #define ESP8266_CIPSTATUS_TcpUdp_DISCON '4'
 #define ESP8266_CIPSTATUS_AP_NO_CONN 	'5'
-
+*/
 /* Settings values */
 #define ESP8266_CWMODE_STATION 			'1'	
 #define ESP8266_CWMODE_SOFTAP 			'2'	
@@ -134,10 +137,6 @@
 #define ESP8266_IPD_DATA_UKNOWN  	0
 #define ESP8266_IPD_DATA_MISSING 	1
 #define ESP8266_IPD_DATA_OK2PARSE 	2
-
-/* STATUS TCP */
-#define ESP8266_TCP_BUFF_FULL       0b01
-#define ESP8266_TCP_PORT_CLOSE      0b10
 
 /* ESP8266 Types */
 typedef struct {
@@ -165,9 +164,11 @@ typedef struct ESP8266_IPv4_t
 } ESP8266_IPv4_t;
 
 /* ESP8266 Variables */
-extern char ESP8266_AT_STATUS;
+/* extern char ESP8266_AT_STATUS;
 extern char ESP8266_STATUS_TCP;
-extern char ESP8266_STATUS;
+extern char ESP8266_STATUS;*/
+extern struct ESP8266Status esp8_status;
+        
 extern ESP8266_Link_t ESP8266_link;
 extern ESP8266_IPv4_t ESP8266_IPv4;
 

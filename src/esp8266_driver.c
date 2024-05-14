@@ -6,6 +6,7 @@
 #include "stm32f4_discovery.h"
 
 #include "esp8266_driver.h"
+#include "esp8266_responses.h"
 
 #include "lcd_log.h"
 
@@ -16,24 +17,19 @@
 #define esp8266_dma_set_length_and_enableTX(length) DMA2_Stream6->NDTR = (uint32_t) length;\
 													while((~DMA2_Stream6->CR & 0x01)) DMA2_Stream6->CR |= DMA_SxCR_EN;
 
-
-char ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE; 
-char ESP8266_STATUS_TCP = ESP8266_ST_UNKNOWN_CODE;
-char ESP8266_STATUS = ESP8266_ST_UNKNOWN_CODE;
-
-static void esp8266_USART_RX_DMA_Init(char *BUFF_L, uint16_t size);
-static void esp8266_USART_TX_DMA_Init(void);
-
+struct ESP8266Status esp8_status;
 static Buffer esp8;
 static char esp8_TX[512];
 static char esp8_RX[ESP8266_BUFF_RX_LEN];
 static char ESP8266_SET_RESTART = 0; 
+ESP8266_Link_t ESP8266_link;
+ESP8266_IPv4_t ESP8266_IPv4;
+
+static void esp8266_USART_RX_DMA_Init(char *BUFF_L, uint16_t size);
+static void esp8266_USART_TX_DMA_Init(void);
 
 #define esp8266_cmd_at_add_CR_NL(x) *(esp8_TX + x) = 13;\
 									*(esp8_TX + x + 1) = 10;
-
-ESP8266_Link_t ESP8266_link;
-ESP8266_IPv4_t ESP8266_IPv4;
 
 void esp8266_init(void) {
 	USART_InitTypeDef USART_InitStructure;
@@ -80,6 +76,9 @@ void esp8266_init(void) {
 	memset(ESP8266_IPv4.ip, '\0', ESP8266_IP_LEN);
 	memset(ESP8266_IPv4.gateway, '\0', ESP8266_IP_LEN);
 	memset(ESP8266_IPv4.netmask, '\0', ESP8266_IP_LEN);
+
+    esp8_status.cmd = ESP8_UNKNOWN;
+    esp8_status.wifi = Unknown;
 
 }
 
@@ -316,18 +315,15 @@ void esp8266_clean_link_buff(char link) {
 	memset(ESP8266_link.buffXlink[link], '\0', ESP8266_BUFF_PER_LINK);
 }
 
-static void esp8266_buff_clean_and_increment(unsigned short it) {
-	while (it) {	
-		*esp8.read = 0;
-        /*
-		esp8.read++;
+#define esp8266_prune_buff() \
+    *esp8.read = 0; \
+    esp8.read = esp8.read == esp8.eof \
+                ? esp8.data \
+                : esp8.read + 1
 
-		if (esp8.read == esp8.eof)
-			esp8.read = esp8.data;
-        */
-        esp8.read = esp8.read == esp8.eof \
-                    ? esp8.data \
-                    : esp8.read + 1;
+static void esp8266_prune_N_buff(uint16_t it) {
+    while (it) { 
+        esp8266_prune_buff();
 		it--;
 	}
 }
@@ -359,7 +355,8 @@ static unsigned char esp8266_http_query_RESTMethod(void) {
 					(*esp8.read == '1') ||\
 					(*esp8.read == '.') ||\
 					(*esp8.read == '1') ? no_method + 1 : 0;
-		esp8266_buff_clean_and_increment(1);
+        
+        esp8266_prune_buff();
 	}
 
 	// if all characters were found, then return it the respective method
@@ -373,14 +370,14 @@ static unsigned char esp8266_http_query_RESTMethod(void) {
 static unsigned char esp8266_http_query_Resource(char *res) {
 	unsigned char i = 0;
 	// Forward cursors until to catch the resource needed started
-	while(*esp8.read != '/')
-		esp8266_buff_clean_and_increment(1);
-
+	while(*esp8.read != '/') {
+        esp8266_prune_buff();
+    }
 	// Forward cursor until all resource requested is acquiered;
 	while(*esp8.read != ' ') {
 		res[i] = *esp8.read;
 		i++;
-		esp8266_buff_clean_and_increment(1);
+        esp8266_prune_buff();
 	}
 
 	res[i] = 0;
@@ -393,19 +390,23 @@ static unsigned short esp8266_http_query_ContentLength(void) {
 	unsigned short ch2cmp;
 	static unsigned short ch2cmp_offset = 0;
 	char *content_length = "Content-Length: ";
+    uint16_t content_length__size = 16;
 
-	while((ch2cmp_offset < 16) && (*esp8.read != 0)) {
+	while((ch2cmp_offset < content_length__size) && (*esp8.read != 0)) {
 
 		dist = esp8.eof - esp8.read + 1;
-		ch2cmp = (dist > 16) ? 16 - ch2cmp_offset : dist;
+
+		ch2cmp = (dist > content_length__size) \
+                 ? content_length__size - ch2cmp_offset \
+                 : dist;
 
 		if (memcmp(esp8.read, content_length + ch2cmp_offset, ch2cmp) == 0){
 			ch2cmp_offset += ch2cmp; 
-			esp8266_buff_clean_and_increment(ch2cmp);
+			esp8266_prune_N_buff(ch2cmp);
 		}
 		else {
 			ch2cmp_offset = 0;
-			esp8266_buff_clean_and_increment(1);
+            esp8266_prune_buff();
 		}
 	}
 
@@ -413,7 +414,7 @@ static unsigned short esp8266_http_query_ContentLength(void) {
 		ch2cmp = 0;
 		while(*esp8.read != '\r') {
 			ch2cmp = ch2cmp * 10 + *esp8.read - 48;
-			esp8266_buff_clean_and_increment(1); 
+            esp8266_prune_buff();
 		}
 		ch2cmp_offset = 0;
 		return ch2cmp;
@@ -423,13 +424,13 @@ static unsigned short esp8266_http_query_ContentLength(void) {
 
 static void esp8266_http_query_Content(char *content, unsigned short len) {
 	unsigned rns = 0;
-	// *content = 0;
-	// content++;
 
 	// skip until the end of the http header
 	while(rns < 4) {
-		rns = ((*esp8.read == '\r') || (*esp8.read == '\n')) ? rns + 1 : 0;
-		esp8266_buff_clean_and_increment(1);
+		rns = ((*esp8.read == '\r') || (*esp8.read == '\n')) \
+              ? rns + 1 \
+              : 0;
+        esp8266_prune_buff();
 	}
 
 	// If there's plenty of available space in the buffer, the memory can be copied out
@@ -481,7 +482,7 @@ static unsigned char esp8266_http_parse(char *tmp_ptr) {
 			esp8266_http_query_Content(tmp_ptr + cursor, content_length);
 		} 
 
-		ESP8266_STATUS_TCP |= ESP8266_TCP_BUFF_FULL;
+		esp8_status.tcp |= TCP_BUFF_FULL;
 		return 0;
 	} 
 	return 1;
@@ -494,19 +495,22 @@ static unsigned char esp8266_http_parse(char *tmp_ptr) {
 static unsigned short esp8266_ipd_parse(char *tmp_ptr) {
 	unsigned char link_queue;
 	unsigned short ipd_len = 0;
+    char *multi_conn, link;
 
 	/* Cleaning IPD */
-	esp8266_buff_clean_and_increment(ESP8266_ST_IPD_LEN);
+	// esp8266_prune_N_buff();
 
 	/* Query Link ID */
 	link_queue = ESP8266_link.n_links;
-	// LCD_UsrLog("RX:%s\r\n", esp8.read);	
+    
+    // FIXME:
+    // *esp.read can lead to segmentation fault.
 	if (*(esp8.read + 2) == ',') {
 		ESP8266_link.open[link_queue] = *(esp8.read + 1) - 47; // "-47" because ascii "1" (=49), the link 0 wil be 1
-		esp8266_buff_clean_and_increment(3); // includes both commas: ",<link_id:8bits>,"
+		esp8266_prune_N_buff(3); // includes both commas: ",<link_id:8bits>,"
 	} else {
 		ESP8266_link.open[link_queue] = 1;  	// This is for Single Connection
-		esp8266_buff_clean_and_increment(1); 	// includes only one comma: ","
+		esp8266_prune_buff(); 	// includes only one comma: ","
 	}
 
 	ESP8266_link.n_links++;
@@ -521,7 +525,7 @@ static unsigned short esp8266_ipd_parse(char *tmp_ptr) {
 	/* Query  IPD data length */
 	while(*esp8.read != ':') {
 		ipd_len = ipd_len * 10 + *esp8.read - 48;
-		esp8266_buff_clean_and_increment(1); 
+		esp8266_prune_buff(); 
 	}
 	return ipd_len;
 }
@@ -535,144 +539,272 @@ static unsigned short esp8266_ipd_parse(char *tmp_ptr) {
 static void esp8266_cipstate_parse(void) {
 	char *ch;
 	
-	esp8266_buff_clean_and_increment(16); // skip "+CIPSTA_CUR:ip:\""
+	esp8266_prune_N_buff(2); // skip "+CIPSTA_CUR:ip:\""
 	ch = ESP8266_IPv4.ip;
 	while(*esp8.read != '"') {
 		*ch = *esp8.read;
 		ch++;
-		esp8266_buff_clean_and_increment(1); 
+		esp8266_prune_buff(); 
 	} 
 	*ch = 0;
 
-	esp8266_buff_clean_and_increment(24); // skip "\"\r\n+CIPSTA_CUR<DEF>:gateway:\""
+	esp8266_prune_N_buff(24); // skip "\"\r\n+CIPSTA_CUR<DEF>:gateway:\""
 	ch = ESP8266_IPv4.gateway;
 	while(*esp8.read != '"') {
 		*ch = *esp8.read;
 		ch++;
-		esp8266_buff_clean_and_increment(1); 
+		esp8266_prune_buff(); 
 	}
 	*ch = 0;
 
-	esp8266_buff_clean_and_increment(24); // skip "\"\r\n+CIPSTA_CUR:netmask:\""
+	esp8266_prune_N_buff(24); // skip "\"\r\n+CIPSTA_CUR:netmask:\""
 	ch = ESP8266_IPv4.netmask;
 	while(*esp8.read != '"') {
 		*ch = *esp8.read;
 		ch++;
-		esp8266_buff_clean_and_increment(1); 
+		esp8266_prune_buff(); 
 	}
 	*ch = 0;
 }
 
-void esp8266_response(void) {
-	// parse the receiving data
-	static unsigned char ESP8266_IPD_DATA_STATUS = ESP8266_IPD_DATA_UKNOWN;
-	static char *buff_link;
+static uint8_t on_closing_link() {
+    uint8_t i;
+    
+    if(esp8_status.tcp & TCP_BUFF_FULL)
+        return 1;
 
-	if (ESP8266_IPD_DATA_STATUS == ESP8266_IPD_DATA_OK2PARSE) {
-		ESP8266_IPD_DATA_STATUS = ESP8266_IPD_DATA_UKNOWN;
+	esp8_status.cmd = ESP8_LINK_CLOSED;
+    esp8_status.tcp |= TCP_PORT_CLOSE;
+    
+    i = 0;
+    while(ESP8266_link.open[i] != esp8_status.link && (i < 5)) 
+        ++i;
+
+    if (i == 5) {
+        esp8_status.cmd = ESP8_UNKNOWN;
+        return 0;
+    }
+
+	ESP8266_link.open[i] = 0; // 0,CLOSED
+    return 0;
+}
+
+#define MATCH(resp)     (counter[resp] == resp##_LEN)
+
+#define RESET_MATCH()   esp8266_prune_buff(); \
+                        memset(counter, 0, ESP8_RESP_COUNT)
+
+void esp8266_response(void) {
+    static uint8_t counter[ESP8_RESP_COUNT] = {0};
+	static unsigned char ESP8266_IPData_STATUS = ESP8266_IPD_DATA_UKNOWN;
+	static char *buff_link;
+    
+	if (ESP8266_IPData_STATUS == ESP8266_IPD_DATA_OK2PARSE) {
+		ESP8266_IPData_STATUS = ESP8266_IPD_DATA_UKNOWN;
         if(esp8266_http_parse(buff_link))
-			ESP8266_AT_STATUS = ESP8266_ST_ERROR_CODE;
+            esp8_status.cmd = ESP8_ERROR;
         return;
 	}
 
 	while(*esp8.read != 0) {
 
-		if (memcmp(esp8.read, ESP8266_ST_READY, ESP8266_ST_READY_LEN) == 0) {
-				ESP8266_AT_STATUS = ESP8266_ST_RESTART_CODE;
-				ESP8266_SET_RESTART = 0;
-				esp8266_buff_clean_and_increment(5);
-				return;
-		}
+        switch(*esp8.read) {
+        case '>': // "<wrap symbol>"end
+            esp8_status.cmd = ESP8_WRAP;
+            RESET_MATCH();
+            return;
 
-		else if (memcmp(esp8.read, ESP8266_ST_OK, ESP8266_ST_OK_LEN) == 0) {
-            if (*(esp8.read + 4) == '>') {
-                ESP8266_AT_STATUS = ESP8266_ST_WRAP_CODE;
-                esp8266_buff_clean_and_increment(5);
+        case '+': // "+IPD", "+CIPSTA_CUR:ip"
+            counter[ESP8_IPData]++;
+            counter[ESP8_IP]++;
+            break;
+
+        case ',': // "<X>,CLOSED"
+            counter[ESP8_LINK_CLOSED]++;
+            break;
+
+        case '_': // "+CIPSTA_CUR:ip"
+            counter[ESP8_IP]++;
+            break;
+        
+        case ':': // "+CIPSTA_CUR:ip", "STATUS:"end
+            counter[ESP8_IP]++;
+            counter[ESP8_STATUS]++;
+
+            if (MATCH(ESP8_STATUS)) {
+                RESET_MATCH();
+                esp8_status.wifi = *esp8.read;
+                esp8266_prune_buff();
                 return;
             }
-            /*
-            else if (memcmp(esp8.read + 6, ESP8266_ST_IPD, ESP8266_ST_IPD_LEN) == 0) {
-			    ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
-                esp8266_buff_clean_and_increment(6);
 
+            break;
+
+        case '0': // "<X>,CLOSED"
+        case '1': // "<X>,CLOSED"
+        case '2': // "<X>,CLOSED"
+        case '3': // "<X>,CLOSED"
+        case '4': // "<X>,CLOSED"
+            counter[ESP8_LINK_CLOSED]++;
+            esp8_status.link = *esp8.read - 47;
+            break;
+        
+        case 'A': // "FAIL", "+CIPSTA_CUR:ip", "STATUS:"
+            counter[ESP8_FAIL]++;
+            counter[ESP8_IP]++;
+            counter[ESP8_STATUS]++;
+            break;
+        
+        case 'C': // "<X>,CLOSED", "+CIPSTA_CUR:ip"
+            counter[ESP8_LINK_CLOSED]++;
+            counter[ESP8_IP]++;
+            break;
+
+        case 'D': // "<X>,CLOSED"end, "+IPD"end
+            counter[ESP8_LINK_CLOSED]++;
+            counter[ESP8_IPData]++;
+            
+            if (MATCH(ESP8_LINK_CLOSED)) {
+                if (on_closing_link() == 0) {
+                    RESET_MATCH();
+                } else {
+                    counter[ESP8_LINK_CLOSED]--;
+                }
+                return;
+            }
+
+            if (MATCH(ESP8_IPData)) {
+                RESET_MATCH();
+                esp8_status.cmd = ESP8_UNKNOWN;
                 if (esp8266_ipd_parse(buff_link)) {
-				    buff_link = ESP8266_link.buffXlink[*buff_link];
-				    ESP8266_IPD_DATA_STATUS = ESP8266_IPD_DATA_OK2PARSE;
-				    return;
-			    }
-		    } 
-            */
-			ESP8266_AT_STATUS = ESP8266_ST_OK_CODE;
-			esp8266_buff_clean_and_increment(ESP8266_ST_OK_LEN);
-			return;
-		}
+                    buff_link = ESP8266_link.buffXlink[*buff_link];
+                    ESP8266_IPData_STATUS = ESP8266_IPD_DATA_OK2PARSE;
+                    return;
+                }
 
-        else if (memcmp(esp8.read, ESP8266_ST_IPD, ESP8266_ST_IPD_LEN) == 0) {
-            ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+            }
+            break;
+        case 'E': // "ERROR", "X,CLOSED"
+            counter[ESP8_ERROR]++;
+            counter[ESP8_LINK_CLOSED]++;
+            break;
 
-            if(esp8266_ipd_parse(buff_link)) {
-                buff_link = ESP8266_link.buffXlink[*buff_link];
-                ESP8266_IPD_DATA_STATUS = ESP8266_IPD_DATA_OK2PARSE;
+        case 'F': // "FAIL"
+            counter[ESP8_FAIL]++;
+            break;
+        
+        case 'I': // "FAIL", "+IPD", "+CIPSTA_CUR:ip"
+            counter[ESP8_FAIL]++;
+            counter[ESP8_IPData]++;
+            counter[ESP8_IP]++;
+            break;
+        
+        case 'K': // "OK"end
+            counter[ESP8_OK]++;
+            
+            if(MATCH(ESP8_OK)) {
+                RESET_MATCH();
+                esp8_status.cmd = ESP8_OK;
                 return;
             }
+
+            break;
+
+        case 'L': // "FAIL"end, "X,CLOSED"
+            counter[ESP8_FAIL]++;
+            counter[ESP8_LINK_CLOSED]++;
+            
+            if(MATCH(ESP8_FAIL)) {
+                RESET_MATCH();
+                esp8_status.cmd = ESP8_FAIL;
+                return;
+            }
+            break;
+
+        case 'O': // "OK", "ERROR", "X,CLOSED"
+            counter[ESP8_OK]++;
+            counter[ESP8_ERROR]++;
+            counter[ESP8_LINK_CLOSED]++;
+            break;
+        
+        case 'P': // "+IPD", "+CIPSTA_CUR:ip"
+            counter[ESP8_IPData]++;
+            counter[ESP8_IP]++;
+            break;
+
+        case 'R': // "+CIPSTA_CUR:ip", "ERROR", "ERROR"end
+            counter[ESP8_IP]++;
+            counter[ESP8_ERROR]++;
+            counter[ESP8_ERROR]++;
+
+            if(MATCH(ESP8_ERROR)) {
+                RESET_MATCH();
+                esp8_status.cmd = ESP8_ERROR;
+                return;
+            }
+            break;
+
+        case 'S': // "X,CLOSED", "+CIPSTA_CUR:ip", "STATUS:"
+            counter[ESP8_LINK_CLOSED]++;
+            counter[ESP8_IP]++;
+            counter[ESP8_STATUS]++;
+            break;
+        
+        case 'T': // "+CIPSTA_CUR:ip", "STATUS:"
+        case 'U': // "+CIPSTA_CUR:ip", "STATUS:"
+            counter[ESP8_IP]++;
+            counter[ESP8_STATUS]++;
+            break;
+        
+        case 'a': // "ready"
+        case 'e': // "ready"
+        case 'd': // "ready"
+            counter[ESP8_READY]++;
+            break;
+        
+        case 'i': // "+CIPSTA_CUR:ip"
+            counter[ESP8_IP]++;
+            break;
+        
+        case 'p': // "+CIPSTA_CUR:ip"end
+            counter[ESP8_IP]++;
+
+            if(MATCH(ESP8_IP)) {
+                RESET_MATCH();
+                esp8_status.cmd = ESP8_IP;
+
+                esp8266_cipstate_parse();
+                return;
+            }
+            break;
+        
+        case 'r': // "ready"
+            counter[ESP8_READY]++;
+            break;
+        
+        case 'y': // "ready"end
+            counter[ESP8_READY]++;
+
+            if(MATCH(ESP8_READY)) {
+                RESET_MATCH();
+                esp8_status.cmd = ESP8_READY;
+                ESP8266_SET_RESTART = 0;
+                return;
+            }
+            break;
+        
+        default:
+            memset(counter, 0, ESP8_RESP_COUNT);
         }
 
-		else if(memcmp(esp8.read, ESP8266_ST_FAIL, ESP8266_ST_FAIL_LEN) == 0) {
-			ESP8266_AT_STATUS = ESP8266_ST_FAIL_CODE;
-			esp8266_buff_clean_and_increment(ESP8266_ST_FAIL_LEN);
-			return;
-		}
-		
-		else if(memcmp(esp8.read, ESP8266_ST_ERROR, ESP8266_ST_ERROR_LEN) == 0) {
-			ESP8266_AT_STATUS = ESP8266_ST_ERROR_CODE;
-			esp8266_buff_clean_and_increment(ESP8266_ST_ERROR_LEN);
-			return;
-		}
-
-		else if (memcmp(esp8.read + 2, ESP8266_ST_HTTP_CLOSED, ESP8266_ST_HTTP_CLOSED_LEN) == 0) {
-			
-			char i = 0;
-			char link = (*(esp8.read) < 47) ? 0 : *(esp8.read) - 47;
-
-            if(ESP8266_STATUS_TCP & ESP8266_TCP_BUFF_FULL)
-                return;
-			
-            ESP8266_AT_STATUS = ESP8266_ST_HTTP_CLOSED_CODE;
-            ESP8266_STATUS_TCP |= ESP8266_TCP_PORT_CLOSE;
-
-            while(ESP8266_link.open[i] != link && (i < 5)) 
-                ++i;
-
-             // Revome "X,CLOSED\r\n\r\n"
-			esp8266_buff_clean_and_increment(ESP8266_ST_HTTP_CLOSED_LEN + 6);
-
-            if (i == 5) {
-                ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
-                return;
-            }
-
-			ESP8266_link.open[i] = 0; // 0,CLOSED
-			return;
-		}
-
-		else if (memcmp(esp8.read, ESP8266_ST_CIPSTATE_CUR_IP, ESP8266_ST_CIPSTATE_CUR_IP_LEN) == 0) {
-			ESP8266_AT_STATUS = ESP8266_ST_CIPSTATE_CUR_CODE;
-			esp8266_cipstate_parse();
-			return;
-
-		} else if (memcmp(esp8.read, ESP8266_ST_CIPSTATUS_STATUS_STR, ESP8266_ST_CIPSTATUS_STATUS_LEN) == 0) {
-			esp8266_buff_clean_and_increment(ESP8266_ST_CIPSTATUS_STATUS_LEN);
-			ESP8266_STATUS = *esp8.read;
-		}
-
-		esp8266_buff_clean_and_increment(1);
+		esp8266_prune_buff();
 	}
 
 	if (ESP8266_SET_RESTART) {
 		// Skip 0s on restart
         uint8_t i = 100;
 		while((*esp8.read == 0) && i) {
-			esp8266_buff_clean_and_increment(1);
+			esp8266_prune_buff();
             i--;
         }
 	}

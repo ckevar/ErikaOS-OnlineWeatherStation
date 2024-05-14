@@ -13,6 +13,14 @@
 #include "lcd_log.h"
 #include "stm32f4_discovery.h"
 
+#define TIMEOUT_ON_WAITING                  64
+
+#define update_state(curr_state, prev_state) \
+	esp8_status.cmd = ESP8_UNKNOWN; \
+    prev_state = curr_state; \
+	curr_state = APP_FSM_WAITING; \
+    timeout_waiting = 0
+
 WebAppBuilder_t webAppOptions;
 
 static char OWAPI_HTTP_MSG2REQ[250];
@@ -20,23 +28,7 @@ static char OWAPI_HTTP_MSG2REQ_LEN_STR[OWAPI_GET_RESOURCE_STR_LEN+1];
 static unsigned short OWAPI_HTTP_MSG2REQ_LEN = 0;
 static char INTERNAL_EVENT_UPDATE = 0;
 static char APP_FSM_SUPER_STATE = 0;
-static uint8_t timeout_waiting;
 
-static void update_state(short *curr_state, short *prev_state) {
-	ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE; /* Everytime it's gonna pass by WAITING state
-												 * it ESP8266_AT_STATUS has to be set at unknown 
-												 */
-    *prev_state = *curr_state;
-
-    if (*prev_state == APP_FSM_WAITING)
-        timeout_waiting = 0;
-
-	*curr_state = *prev_state == APP_FSM_WAITING \
-                  ? APP_FSM_RESTART_AT_NORMAL \
-                  : APP_FSM_WAITING;
-
-    timeout_waiting = 0;
-}
 
 static char IPAPI_process_result(char *tmp)
 {	
@@ -112,25 +104,25 @@ static char OWAPI_process_result(char *tmp)
 
 static short fsm_on_tcp_connection(void) {
 
-    switch(ESP8266_STATUS) {
-    case ESP8266_CIPSTATUS_APnIP_READY:
-    case ESP8266_CIPSTATUS_TcpUdp_DISCON:
+    switch(esp8_status.wifi) {
+    case WiFi_Ready:
+    case TCP_UDP_Lost:
         switch(APP_FSM_SUPER_STATE) {
         case APP_FSM_SUPER_NORMAL:
-        case APP_FSM_SET_IPAPI_CIPSTART:
-		    return APP_FSM_SET_IPAPI_CIPSTART;
+        case APP_FSM_IPAPI_CIPSTART:
+		    return APP_FSM_IPAPI_CIPSTART;
 
-        case APP_FSM_SET_OW_API_CIPSTART:
-		    return APP_FSM_SET_OW_API_CIPSTART;
+        case APP_FSM_OW_API_CIPSTART:
+		    return APP_FSM_OW_API_CIPSTART;
 
         default:
 		    return APP_FSM_RESTART_AT_NORMAL;
         }
 
-    case ESP8266_CIPSTATUS_TcpUdp_READY:
+    case TCP_UDP_Ready:
 		 return APP_FSM_CLOSE_TCP_CONNS_IF_OPEN;
 
-    case ESP8266_CIPSTATUS_AP_NO_CONN:
+    case WiFi_No_AP:
         return APP_FSM_WIFI_CONN;
 
 	default:
@@ -157,20 +149,20 @@ static short esp8266_fsm_prev_OnOK(short *prev_state) {
 	case APP_FSM_CHECK_TCP_CONNECTION:
         return fsm_on_tcp_connection();
 
-	case APP_FSM_CLOSE_IPAPI_CONNECTION: 
-	    return APP_FSM_SET_OW_API_CIPSTART;
+	case APP_FSM_CLOSE_IPAPI: 
+	    return APP_FSM_OW_API_CIPSTART;
 
-	case APP_FSM_SET_IPAPI_CIPSTART:
-        return APP_FSM_SET_IPAPI_CIPSEND;
+	case APP_FSM_IPAPI_CIPSTART:
+        return APP_FSM_IPAPI_CIPSEND;
 
-	case APP_FSM_SET_OW_API_CIPSTART:
-	    return APP_FSM_SET_OW_API_CIPSEND;
+	case APP_FSM_OW_API_CIPSTART:
+	    return APP_FSM_OW_API_CIPSEND;
 
-    case APP_FSM_SET_IPAPI_CIPSEND:
-    case APP_FSM_SET_OW_API_CIPSEND:
+    case APP_FSM_IPAPI_CIPSEND:
+    case APP_FSM_OW_API_CIPSEND:
         return APP_FSM_WAITING;
 
-	case APP_FSM_CLOSE_OW_API_CONNECTION:
+	case APP_FSM_CLOSE_OW_API:
         return APP_FSM_IDLE;
 
     case APP_FSM_RESTART_AT_NORMAL:
@@ -198,8 +190,8 @@ static short esp8266_fsm_prev_OnOK(short *prev_state) {
     case APP_FSM_SHUTDOWN_WEBSERVER:
 	    return APP_FSM_SET_CWMODE_STATION;
 
-    case APP_FSM_SET_IPAPI_REQ_LOCATION:
-    case APP_FSM_SET_OW_API_REQ_WEATHER:
+    case APP_FSM_IPAPI_REQ_LOCATION:
+    case APP_FSM_OW_API_REQ_WEATHER:
         return APP_FSM_WAITING;
 
 	/********************/
@@ -214,12 +206,11 @@ static short esp8266_fsm_prev_OnOK(short *prev_state) {
  */ 
 static short esp8266_fsm_prev_OnWrap(const short prev_state) {
     switch(prev_state) {
-    case APP_FSM_SET_IPAPI_CIPSEND:
-		return APP_FSM_SET_IPAPI_REQ_LOCATION;
+    case APP_FSM_IPAPI_CIPSEND:
+		return APP_FSM_IPAPI_REQ_LOCATION;
 
-    case APP_FSM_SET_OW_API_CIPSEND:
-        return APP_FSM_SET_OW_API_TRANSITION;
-		//return APP_FSM_SET_OW_API_REQ_WEATHER;
+    case APP_FSM_OW_API_CIPSEND:
+        return APP_FSM_OW_API_REQ_WEATHER;
 
     case APP_FSM_WEBAPP_OK_CLIENT0:
     case APP_FSM_NEW_SSIDnPSWD_CONNECTED:
@@ -267,17 +258,15 @@ static void app_http_from_APIs(char *http, short *prev_state, short *curr_state)
 {
 	// From the IP-API to know lgeographic location of 
 	// the ESP8266.
-	if (*prev_state == APP_FSM_SET_IPAPI_REQ_LOCATION) 
-	{
+	if (*prev_state == APP_FSM_IPAPI_REQ_LOCATION) {
 		*curr_state = (IPAPI_process_result(http) == 0) ?\
- 					   APP_FSM_CLOSE_IPAPI_CONNECTION : APP_FSM_SET_IPAPI_CIPSTART;
+ 					   APP_FSM_CLOSE_IPAPI : APP_FSM_IPAPI_CIPSTART;
 
 	} 
 	// From the OpenWeather to parse weather information
-	else if (*prev_state == APP_FSM_SET_OW_API_REQ_WEATHER)
-	{
-		*curr_state = (OWAPI_process_result(http) == 0) ? APP_FSM_CLOSE_OW_API_CONNECTION\
-					   : APP_FSM_SET_OW_API_CIPSTART;
+	else if (*prev_state == APP_FSM_OW_API_REQ_WEATHER) {
+		*curr_state = (OWAPI_process_result(http) == 0) ? APP_FSM_CLOSE_OW_API\
+					   : APP_FSM_OW_API_CIPSTART;
 	}
 }
 
@@ -298,8 +287,8 @@ static void app_http_from_WebApp(char *arriving_http, char link_id, short *prev_
 		// Clean requested resource
 		*arriving_http = 0; 
 
-		// Ack ESP8266_AT_STATUS and set next app state
-		ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+		// Ack esp8_status.cmd and set next app state
+		esp8_status.cmd = ESP8_UNKNOWN;
 		*curr_state = APP_FSM_WEBAPP_OK_CLIENT0;
 
 		// Buil HTTP to send back
@@ -322,7 +311,7 @@ static void app_http_from_WebApp(char *arriving_http, char link_id, short *prev_
 		memset(arriving_http, '\0', WEBAPP_FAVICON_LEN);
 
 		// Acknowledge ESP8266_status and set next app state
-		ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+		esp8_status.cmd = ESP8_UNKNOWN;
 		*curr_state = APP_FSM_WEBAPP_OK_CLIENT0;
 
 		// Build
@@ -383,7 +372,7 @@ static void app_http_from_WebApp(char *arriving_http, char link_id, short *prev_
 
 		snp->link_OnHold = link_id;
 
-		ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+		esp8_status.cmd = ESP8_UNKNOWN;
 		*curr_state = APP_FSM_TRY_NEW_SSID_AND_PASSWORD;
 					
 	}
@@ -423,15 +412,15 @@ static short fsm_on_http_close(short *prev_state, char *wifi) {
                 return APP_FSM_SHUTDOWN_WEBSERVER;
             return APP_FSM_WAITING;
 
-        case APP_FSM_SET_IPAPI_REQ_LOCATION:
-        case APP_FSM_SET_OW_API_REQ_WEATHER:
-            if (ESP8266_TCP_BUFF_FULL & ESP8266_TCP_BUFF_FULL)
+        case APP_FSM_IPAPI_REQ_LOCATION:
+        case APP_FSM_OW_API_REQ_WEATHER:
+            if (esp8_status.tcp & TCP_BUFF_FULL)
                 return APP_FSM_WAITING;
 
-            return APP_FSM_SET_OW_API_CIPSTART;
+            return APP_FSM_OW_API_CIPSTART;
 
-        case APP_FSM_SET_OW_API_CIPSTART:
-            return APP_FSM_SET_OW_API_CIPSTART;
+        case APP_FSM_OW_API_CIPSTART:
+            return APP_FSM_OW_API_CIPSTART;
 
         default:
             return APP_FSM_WAITING;
@@ -439,35 +428,33 @@ static short fsm_on_http_close(short *prev_state, char *wifi) {
 }
 
 static short fsm_on_waiting_state(short *prev_state, char *wifi) {
-    switch(ESP8266_AT_STATUS) {
-    case ESP8266_ST_OK_CODE: 
-	    ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+    switch(esp8_status.cmd) {
+    case ESP8_OK: 
+	    esp8_status.cmd = ESP8_UNKNOWN;
 		return esp8266_fsm_prev_OnOK(prev_state);
 
-    case ESP8266_ST_ERROR_CODE:
-    case ESP8266_ST_FAIL_CODE: 
-        ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+    case ESP8_ERROR:
+    case ESP8_FAIL: 
+        esp8_status.cmd = ESP8_UNKNOWN;
         return APP_FSM_ERR_FAIL;
 
-    case ESP8266_ST_WRAP_CODE:
-	    ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+    case ESP8_WRAP:
+	    esp8_status.cmd = ESP8_UNKNOWN;
 	    return esp8266_fsm_prev_OnWrap(*prev_state);
 
-    case ESP8266_ST_HTTP_CLOSED_CODE:
-	    ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+    case ESP8_LINK_CLOSED:
+	    esp8_status.cmd = ESP8_UNKNOWN;
         return  fsm_on_http_close(prev_state, wifi);
 
-    case ESP8266_ST_CIPSTATE_CUR_CODE:
-	    ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+    case ESP8_IP:
+	    esp8_status.cmd = ESP8_UNKNOWN;
 	    return esp8266_fsm_prev_WiFiStatus(prev_state, wifi);
 
-    case ESP8266_ST_RESTART_CODE:
-        ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
+    case ESP8_READY:
+        esp8_status.cmd = ESP8_UNKNOWN;
 
 		if (*prev_state == APP_FSM_AP_RESTART)
 		    return APP_FSM_SET_AP;
-		// else if (*prev_state == APP_FSM_RESTART_AT_NORMAL)
-		//	return APP_FSM_START;
 
         return APP_FSM_START;
     
@@ -495,12 +482,12 @@ static short fsm_on_err_fail(const short state, const char wifi_state) {
         else if (wifi_state == WiFi_SETTINGUP)
             return APP_FSM_CLEAN_AP_BUFFER;
 
-    case APP_FSM_SET_IPAPI_CIPSTART:
-    case APP_FSM_SET_OW_API_CIPSTART:
+    case APP_FSM_IPAPI_CIPSTART:
+    case APP_FSM_OW_API_CIPSTART:
 	    return APP_FSM_WIFI_CONN;
     
-    case APP_FSM_SET_OW_API_REQ_WEATHER: 
-    case APP_FSM_SET_IPAPI_REQ_LOCATION:
+    case APP_FSM_OW_API_REQ_WEATHER: 
+    case APP_FSM_IPAPI_REQ_LOCATION:
     case APP_FSM_SET_CIPMUX:
         return APP_FSM_WAITING; 
 
@@ -508,55 +495,69 @@ static short fsm_on_err_fail(const short state, const char wifi_state) {
         return APP_FSM_RESTART_AT_NORMAL;
     }
 }
+
+static short fsm_on_timeout(unsigned short prev_state) {
+    switch(prev_state) {
+    case APP_FSM_IPAPI_REQ_LOCATION:
+    case APP_FSM_IPAPI_CIPSTART:
+    case APP_FSM_SET_CIPMUX:
+        return APP_FSM_START;
+
+    case APP_FSM_WEBAPP_OK_CLIENT0:
+    case APP_FSM_CLEAN_AP_BUFFER:
+    case APP_FSM_TRY_NEW_SSID_AND_PASSWORD:
+    case APP_FSM_OW_API_REQ_WEATHER:
+        return APP_FSM_WAITING;
+
+    default:
+        return APP_FSM_RESTART_AT_NORMAL;
+    }
+}
+
 /*
  * Finiste-State Machine, this evaluates external events, ESP8266 events
  * (replies) in order to get the weather info and/or set the configurations
  * to connect with an Access Point.
  */
 void app_fsm_app(void) {
-	static short APP_FSM_CURR_STATE = APP_FSM_START;
-	static short APP_FSM_PREV_STATE = APP_FSM_START; /*
-    static short APP_FSM_CURR_STATE = APP_FSM_AP_RESTART;
-	static short APP_FSM_PREV_STATE = APP_FSM_AP_RESTART;*/
-    static char WIFI_SET = WiFi_NO_CONNECTED;
+	static short nx_state = APP_FSM_START;
+	static short state = APP_FSM_START;
+    static char wifi_status = WiFi_NO_CONNECTED;
+    static uint8_t timeout_waiting;
 
 	/* SSID AND PSW for ESP */
 	static SSIDnPSWD_t ssidNpswd;
 
 	/**** CHECK EVENTS (Screen touched?) ****/
 	// if(IsEvent(RESET_ESP8266_EVNT)) {
-	// 	APP_FSM_CURR_STATE = APP_FSM_START;
-	// 	APP_FSM_PREV_STATE = APP_FSM_START;
+	// 	nx_state = APP_FSM_START;
+	// 	state = APP_FSM_START;
 	// 	ClearEvents();
 
 	// } else 
 	if (IsEvent(SET_AP_ESP8266_EVNT)) {
-		APP_FSM_CURR_STATE = APP_FSM_SET_AP;
-		APP_FSM_PREV_STATE = APP_FSM_SET_AP;
+		nx_state = APP_FSM_SET_AP;
+		state = APP_FSM_SET_AP;
 		ClearEvents();
 	}
 	if (INTERNAL_EVENT_UPDATE && (APP_FSM_SUPER_STATE != APP_FSM_SUPER_SETTINGS)) {
 		INTERNAL_EVENT_UPDATE = 0;
-		APP_FSM_CURR_STATE = APP_FSM_WIFI_CONN;
-		APP_FSM_PREV_STATE = APP_FSM_WIFI_CONN;
+		nx_state = APP_FSM_WIFI_CONN;
+		state = APP_FSM_WIFI_CONN;
 	}
-    if (APP_FSM_PREV_STATE == APP_FSM_WAITING) {
-        APP_FSM_CURR_STATE = APP_FSM_RESTART_AT_NORMAL;
-		APP_FSM_PREV_STATE = APP_FSM_RESTART_AT_NORMAL;
-    }
 	/****************************************/
 
-	switch (APP_FSM_CURR_STATE) {
+	switch (nx_state) {
 
 		/*********************** INITIAL SETUP FSMs **********************/
 		case APP_FSM_RESTART_AT_NORMAL:
 			// Restarts the ESP8266
 			UI_WriteState("Restarting");
 			esp8266_restart();
-			WIFI_SET = WiFi_SETTINGUP;
+			wifi_status = WiFi_SETTINGUP;
 			UI_clear_progress();
 			UI_WiFiNo();
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			APP_FSM_SUPER_STATE =  APP_FSM_SUPER_NORMAL;
 			break;
 
@@ -567,7 +568,7 @@ void app_fsm_app(void) {
 
 			UI_clear_progress();
 			UI_WiFiNo();
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			APP_FSM_SUPER_STATE =  APP_FSM_SUPER_NORMAL;
 			break;
 
@@ -576,15 +577,15 @@ void app_fsm_app(void) {
             UI_clear_progress();
 			UI_WriteState("Station mode");
 			esp8266_set_CWMODE(ESP8266_CWMODE_STATION);
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);		
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);		
 			break;
 
 		case APP_FSM_SET_CIPMUX:
 			UI_WriteState("Force Multi Connection");
 			esp8266_set_CIPMUX(ESP8266_CIPMUX_MULTI_CON);
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);
 			break;
 
 		/*****************************************************************/
@@ -596,9 +597,9 @@ void app_fsm_app(void) {
             UI_clear_progress();
 			esp8266_get_CIPSTA_CUR();
 
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
+			UI_set_progress(nx_state, APP_FSM_IDLE);
 			UI_WiFiSettingUp();
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			break;
 
 		case APP_FSM_CHECK_TCP_CONNECTION:
@@ -606,105 +607,102 @@ void app_fsm_app(void) {
 			UI_WriteState("Check TCP Conn");
 			esp8266_get_CIPSTATUS();
 			UI_WiFiConnected();
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);
 			break;
 
 		case APP_FSM_CLOSE_TCP_CONNS_IF_OPEN:
 			// If there's an open port, it should be closed.
 			UI_WriteState("Close TCP Conn");
 			esp8266_close_tcp(0); // 0 for Single connections CMUX = 0
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);
 		/*****************************************************************/
 
 		/*************************** HTML FSMs ***************************/
-		case APP_FSM_SET_IPAPI_CIPSTART:
+		case APP_FSM_IPAPI_CIPSTART:
 			// Sends the DNSS of the IP-API to know the location of the
 			// ESP8266 based on its public IP.
 			UI_WriteState("Connect to IP-API");
 			esp8266_set_DNS(0, IPAPI_JSON_DNS_PORT, IPAPI_JSON_DNS_PORT_LEN);
 
 			UI_LocationUnavailable();
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
-			APP_FSM_SUPER_STATE = APP_FSM_SET_IPAPI_CIPSTART;
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);
+			APP_FSM_SUPER_STATE = APP_FSM_IPAPI_CIPSTART;
 			break;	
 
-		case APP_FSM_SET_IPAPI_CIPSEND:
+		case APP_FSM_IPAPI_CIPSEND:
 			// Tells the ESP8266 how long the HTTP data will be
 			UI_WriteState("Request MEM alloc for IP-API");
 			esp8266_set_CIPSEND_link(0, IPAPI_GET_RESOURCE_LEN_STR, IPAPI_GET_RESOURCE_LEN_STR_LEN);
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);
 			break;
 							
-		case APP_FSM_SET_IPAPI_REQ_LOCATION:
+		case APP_FSM_IPAPI_REQ_LOCATION:
 			// Sends the REST request to IP-API
 			UI_WriteState("Request Location on IP-API");
 			esp8266_req_HTML(IPAPI_GET_RESOURCE, IPAPI_GET_RESOURCE_LEN);
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);
 			break;
 
-		case APP_FSM_CLOSE_IPAPI_CONNECTION:
+		case APP_FSM_CLOSE_IPAPI:
 			// Closes the connection with IP-API
 			UI_WriteState("Terminate conn with IP-API");
-			esp8266_close_tcp(0); // 0 for Single connections CMUX = 0
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
-			break;
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+            if(esp8_status.cmd != ESP8_LINK_CLOSED) {
+			    esp8266_close_tcp(0); // 0 for Single connections CMUX = 0
+			    update_state(nx_state, state);
+			    break;
+            }
+            esp8_status.cmd = ESP8_UNKNOWN;
+            nx_state = APP_FSM_OW_API_CIPSTART;
+            break;
 
-		case APP_FSM_SET_OW_API_CIPSTART:
+		case APP_FSM_OW_API_CIPSTART:
 			// Starts the connection the OpenWeather server
 			UI_WriteState("Connect to OW");
 			esp8266_set_DNS(1, OWAPI_DNS_PORT, OWAPI_DNS_PORT_LEN);
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
-			APP_FSM_SUPER_STATE = APP_FSM_SET_OW_API_CIPSTART;
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);
+			APP_FSM_SUPER_STATE = APP_FSM_OW_API_CIPSTART;
 			break;
 
-		case APP_FSM_SET_OW_API_CIPSEND:
+		case APP_FSM_OW_API_CIPSEND:
 			// Tells ESP8266 length of the HTTP request
 			UI_WriteState("Request MEM alloc for OW");
 			esp8266_set_CIPSEND_link(1, OWAPI_HTTP_MSG2REQ_LEN_STR, strlen(OWAPI_HTTP_MSG2REQ_LEN_STR)); 
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);
 			break;
 
-        case APP_FSM_SET_OW_API_TRANSITION:
-            timeout_waiting++;
-            if(timeout_waiting > 0) {
-                timeout_waiting = 0;
-                APP_FSM_CURR_STATE = APP_FSM_SET_OW_API_REQ_WEATHER;
-            }
-            break;
-
-		case APP_FSM_SET_OW_API_REQ_WEATHER:
+        case APP_FSM_OW_API_REQ_WEATHER:
 			// Sends the HTTP request
 			UI_WriteState("Request Weather info on OW");
 			esp8266_req_HTML(OWAPI_HTTP_MSG2REQ, OWAPI_HTTP_MSG2REQ_LEN);
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			UI_set_progress(nx_state, APP_FSM_IDLE);
+			update_state(nx_state, state);
 			break;
 
-		case APP_FSM_CLOSE_OW_API_CONNECTION:
+		case APP_FSM_CLOSE_OW_API:
 			// Closes connection with OpenWeather
 			UI_WriteState("Terminate conn with OW");
-            UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
-            if (ESP8266_AT_STATUS != ESP8266_ST_HTTP_CLOSED_CODE) {
+            UI_set_progress(nx_state, APP_FSM_IDLE);
+            if (esp8_status.cmd != ESP8_LINK_CLOSED) {
 			    esp8266_close_tcp(1); 
-			    update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			    update_state(nx_state, state);
                 break;
             }
-            ESP8266_AT_STATUS = ESP8266_ST_UNKNOWN_CODE;
-			APP_FSM_CURR_STATE = APP_FSM_IDLE;
+            esp8_status.cmd = ESP8_UNKNOWN;
+			nx_state = APP_FSM_IDLE;
 			break;
 
 		case APP_FSM_IDLE:
 			// Doesn't do anything, it just waits
 			UI_WriteState("ALL GOOD");
-			UI_set_progress(APP_FSM_CURR_STATE, APP_FSM_IDLE);
+			UI_set_progress(nx_state, APP_FSM_IDLE);
 			break;
 		/*****************************************************************/
 
@@ -713,12 +711,12 @@ void app_fsm_app(void) {
 			// Restarts the ESP8266
 			UI_WriteState("Restarting...");
 			esp8266_restart();
-			WIFI_SET = WiFi_SETTINGUP;
+			wifi_status = WiFi_SETTINGUP;
 			UI_clear_progress();
 			UI_SettingsOn();
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			APP_FSM_SUPER_STATE = APP_FSM_SUPER_SETTINGS;
 			break;
 
@@ -727,9 +725,9 @@ void app_fsm_app(void) {
 			UI_clear_progress();
 			UI_WriteState("Enabling WiFi");
 			esp8266_set_CWMODE(ESP8266_CWMODE_STATION_N_SOFTAP);
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
             APP_FSM_SUPER_STATE = APP_FSM_SUPER_SETTINGS;
 			break;
 
@@ -737,9 +735,9 @@ void app_fsm_app(void) {
 			// Sets the ESP8266 Access Point SSID and Password
 			UI_WriteState("Configurations on WiFi");
 			esp8266_set_CWSAP(APP_AP_CONFIGURATION, APP_AP_CONFIGURATION_LEN);
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			break;
 
 		case APP_FSM_SET_AP_CIPMUX:
@@ -747,9 +745,9 @@ void app_fsm_app(void) {
 			UI_WriteState("Enabling multiple connection");
 			esp8266_set_CIPMUX(ESP8266_CIPMUX_MULTI_CON);
 
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			break;
 
 		case APP_FSM_SET_AP_SERVER:
@@ -757,40 +755,40 @@ void app_fsm_app(void) {
 			UI_WriteState("Enabling web server");
 			esp8266_clean_link_buff(0);
 			esp8266_enable_HTTPServer_P80();
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
-			ESP8266_STATUS_TCP = ESP8266_ST_UNKNOWN_CODE;
+			update_state(nx_state, state);
+			esp8_status.tcp = ESP8_UNKNOWN;
 			break;
 
 		case APP_FSM_WEBAPP_OK_CLIENT0:
 			// Idle state waiting for clients to request or submit 
 			// HTTP information on the webserver
 			UI_WriteState("Waiting for connections");
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			APP_FSM_PREV_STATE = APP_FSM_CURR_STATE;
-			APP_FSM_CURR_STATE = APP_FSM_WAITING;
+			state = nx_state;
+			nx_state = APP_FSM_WAITING;
 			break;
 
 		case APP_FSM_WEBAPP_OK_CLIENT1:
 			// Sends the requested HTML
 			UI_WriteState("Replying");
 			esp8266_send_html();
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			ESP8266_STATUS_TCP = ESP8266_ST_UNKNOWN_CODE;
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			esp8_status.tcp = ESP8_UNKNOWN;
+			update_state(nx_state, state);
 			break;
 
 		case APP_FSM_CLEAN_AP_BUFFER:
 			// Idle state to get out, i think it's useless 
 			UI_WriteState("Transition state");
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			APP_FSM_PREV_STATE = APP_FSM_CURR_STATE;
-			APP_FSM_CURR_STATE = APP_FSM_WAITING;
-			ESP8266_STATUS_TCP = ESP8266_ST_UNKNOWN_CODE;
+			state = nx_state;
+			nx_state = APP_FSM_WAITING;
+			esp8_status.tcp = ESP8_UNKNOWN;
 			break;
 
 		case APP_FSM_TRY_NEW_SSID_AND_PASSWORD:
@@ -799,17 +797,17 @@ void app_fsm_app(void) {
 			UI_WriteState("Trying new SSID");
 			esp8266_set_SSID_and_PASS(ssidNpswd.ssidNpassword, ssidNpswd.len);
 			UI_WiFiSettingUp();
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
 
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			break;
 
 		case APP_FSM_NEW_SSIDnPSWD_CONNECTED:
 			// Connection to new AP has been successful, it retrieves
 			// a webpage to the user telling 'DONE'
 			UI_WriteState("Connected to new SSID");
-			WIFI_SET = WiFi_CONNECTED;
+			wifi_status = WiFi_CONNECTED;
 			
 			// set MYME Type TEXT/HTML
 			webAppOptions.content_type = WEBAPP_CONTENT_TYPE_TEXT_HTML;
@@ -825,10 +823,10 @@ void app_fsm_app(void) {
 			esp8266_load_html(webAppOptions.http, webAppOptions.http_len);
 
 			UI_WiFiConnected();
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
 
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			break;
 
 		case APP_FSM_TRY_AGAIN_WA_SSID_AND_PASSWORD:
@@ -851,9 +849,9 @@ void app_fsm_app(void) {
 
 			UI_WiFiNo();
 			// LCD_UsrLog("New SSID and Password Failed\r\n");
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			break;
 
 		case APP_FSM_SHUTDOWN_WEBSERVER:
@@ -862,55 +860,32 @@ void app_fsm_app(void) {
 			esp8266_disable_HTTPServer_P80();
 
 			UI_SettingsOff();
-			UI_set_progress(APP_FSM_CURR_STATE - APP_FSM_IDLE,\
+			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-			update_state(&APP_FSM_CURR_STATE, &APP_FSM_PREV_STATE);
+			update_state(nx_state, state);
 			break;
 		/****************************************/
 
 		case APP_FSM_WAITING:
-			// A waiting State, it waits for any reply from the ESP8266, and
-			// redirects to the follow state accordingly.
             
-            APP_FSM_CURR_STATE = fsm_on_waiting_state(&APP_FSM_PREV_STATE, &WIFI_SET);
+            nx_state = fsm_on_waiting_state(&state, &wifi_status);
 
-			if (ESP8266_STATUS_TCP & ESP8266_TCP_BUFF_FULL) {
-				app_http_process(&APP_FSM_PREV_STATE, &APP_FSM_CURR_STATE, &ssidNpswd);
-				ESP8266_STATUS_TCP &= ~ESP8266_TCP_BUFF_FULL;
+			if (esp8_status.tcp & TCP_BUFF_FULL) {
+				app_http_process(&state, &nx_state, &ssidNpswd);
+				esp8_status.tcp &= ~TCP_BUFF_FULL;
 			}
 
             timeout_waiting++;
-            if (timeout_waiting == 64) {
+            if (timeout_waiting == TIMEOUT_ON_WAITING) {
                 timeout_waiting = 0;
-                switch(APP_FSM_PREV_STATE) {
-                case APP_FSM_SET_IPAPI_REQ_LOCATION:
-                    APP_FSM_CURR_STATE = APP_FSM_START;
-                    break;
-                
-                case APP_FSM_SET_IPAPI_CIPSTART:
-                case APP_FSM_SET_CIPMUX:
-                    APP_FSM_CURR_STATE = APP_FSM_START;
-                    break;
-
-		        case APP_FSM_WEBAPP_OK_CLIENT0:
-                case APP_FSM_CLEAN_AP_BUFFER:
-                case APP_FSM_TRY_NEW_SSID_AND_PASSWORD:
-                case APP_FSM_SET_OW_API_REQ_WEATHER:
-                    APP_FSM_CURR_STATE = APP_FSM_WAITING;
-                    break;
-
-                default:
-                    APP_FSM_CURR_STATE = APP_FSM_RESTART_AT_NORMAL;
-                }
-
+                nx_state = fsm_on_timeout(state);
             }
 
 			break;
 
 		case APP_FSM_ERR_FAIL:
-			UI_set_err_progress(APP_FSM_PREV_STATE, APP_FSM_IDLE);
-			UI_WriteState("ERROR");
-            APP_FSM_CURR_STATE = fsm_on_err_fail(APP_FSM_PREV_STATE, WIFI_SET);
+			UI_set_err_progress(state, APP_FSM_IDLE);
+            nx_state = fsm_on_err_fail(state, wifi_status);
 			break;
 
 	}
