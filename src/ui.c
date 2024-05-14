@@ -5,6 +5,9 @@
  *      Author: C. Alvarado
  */
 
+#include <time.h>
+#include <stdlib.h>
+
 #include "WidgetConfig.h"
 
 #include "Widget.h"
@@ -135,6 +138,7 @@ Widget weather_ui[NUMWIDGETS] = {
 	{177, 45, 54, 54, IMAGE, (void *)&temp_dec_img},
 	{231, 45, 54, 54, IMAGE, (void *)&temp_uni_img},
 	{228, 5, 8, 8, TEXT, (void *) &state_dev},
+    {14, 251, 8, 8, TEXT, (void *) &state_dev}
 };
 
 void DrawFixWidgets(){
@@ -350,6 +354,18 @@ void UI_writeWeatherCurrTemp(char *curr_temp) {
 		DrawOff(&weather_ui[TEMP_UNI_IMG]);		
 	}
 
+}
+
+void UI_setTime(char *timezone, char *time) {
+    time_t epochs;
+    struct tm *time_info;
+    char buff[10];
+    
+    epochs = atoi(time) + atoi(timezone);
+    time_info = localtime(&epochs);
+    strftime(buff, 10, "%I:%M%p", time_info);
+
+    WPrintLog(&weather_ui[REQ_TIME], buff);
 }
 /*******************************************************/
 

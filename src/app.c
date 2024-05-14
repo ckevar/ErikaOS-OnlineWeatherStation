@@ -81,22 +81,30 @@ static char IPAPI_process_result(char *tmp)
 
 static char OWAPI_process_result(char *tmp)
 {
-	char *OWAPI_VALS[OWAPI_MEMBERS];
-	unsigned short OWAPI_VALS_LEN[OWAPI_MEMBERS];
+	char *weather[OWAPI_PARAMS_COUNT];
+	unsigned short sizes[OWAPI_PARAMS_COUNT];
 
-	if(OWAPI_get_weather(tmp, OWAPI_VALS, OWAPI_VALS_LEN) == 0)
-	{
+	if(OWAPI_get_weather(tmp, weather, sizes) == 0) {
 		
-		*(OWAPI_VALS[OWAPI_DESCRIPTION_Idx] + OWAPI_VALS_LEN[OWAPI_DESCRIPTION_Idx] - 1) = 0;
-		OWAPI_VALS[OWAPI_DESCRIPTION_Idx]++;
-		UI_writeWeatherDescription(OWAPI_VALS[OWAPI_DESCRIPTION_Idx]);
+        /* Weather Description */
+		*(weather[iOWAPI_DESCRIPTION] + sizes[iOWAPI_DESCRIPTION] - 1) = 0;
+		weather[iOWAPI_DESCRIPTION]++;
+		UI_writeWeatherDescription(weather[iOWAPI_DESCRIPTION]);
 
-		UI_writeWeatherFeelsLike(OWAPI_VALS[OWAPI_FEELS_LIKE_Idx]);
-		UI_writeWeatherCurrTemp(OWAPI_VALS[OWAPI_TEMP_Idx]);
+        /* Temperature and Feeling Temperature */
+		UI_writeWeatherFeelsLike(weather[iOWAPI_FEELS_LIKE]);
+		UI_writeWeatherCurrTemp(weather[iOWAPI_TEMP]);
 
-		*(OWAPI_VALS[OWAPI_ICON_Idx] + OWAPI_VALS_LEN[OWAPI_ICON_Idx] - 1) = 0;
-		OWAPI_VALS[OWAPI_ICON_Idx]++;
-		UI_setWeatherIcon((unsigned short *) OWAPI_VALS[OWAPI_ICON_Idx]);
+        /* Weather Icon */
+		*(weather[iOWAPI_ICON] + sizes[iOWAPI_ICON] - 1) = 0;
+		weather[iOWAPI_ICON]++;
+		UI_setWeatherIcon((unsigned short *) weather[iOWAPI_ICON]);
+
+        /* Request Time */
+        *(weather[iOWAPI_TIMEZONE] + sizes[iOWAPI_TIMEZONE]) = 0;
+        *(weather[iOWAPI_TIME] + sizes[iOWAPI_TIME]) = 0;
+        UI_setTime(weather[iOWAPI_TIMEZONE], weather[iOWAPI_TIME]);
+
 		return 0;
 	}
 	return 1;

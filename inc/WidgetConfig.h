@@ -13,7 +13,7 @@
 #include "stm32f4_discovery_lcd.h"
 
 
-#define NUMWIDGETS 			15 
+#define NUMWIDGETS 			16
 
 #define LOCATION_IMG 		0
 #define CITY_STR			1
@@ -32,6 +32,8 @@
 #define TEMP_DEC_IMG		12
 #define TEMP_UNI_IMG		13
 #define STATE_DEV_STR 		14
+
+#define REQ_TIME            15
 
 #define RESET_ESP8266_EVNT 	0x01
 #define SET_AP_ESP8266_EVNT 0x02
@@ -72,6 +74,7 @@ void UI_writeWeatherDescription(char *weatherDescription);
 void UI_writeWeatherFeelsLike(char *feels_like_val);
 void UI_setWeatherIcon(unsigned short *iconID);
 void UI_writeWeatherCurrTemp(char *curr_temp);
+void UI_setTime(char *timezone, char *time);
 
 void UI_SettingsOn(void);
 void UI_SettingsOff(void);
