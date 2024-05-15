@@ -68,7 +68,7 @@ extern sFONT Font16x24;
 extern sFONT Font12x12;
 extern sFONT Font8x12;
 extern sFONT Font8x8;
-
+extern sFONT Font9x9;
 /**
   * @}
   */ 

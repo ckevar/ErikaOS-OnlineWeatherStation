@@ -49,7 +49,8 @@
 #include "lcd_log.h"
 
 
-const static unsigned char *temp_number[10] = {zero, one, two, three, four, five, six, seven, eight, nine};
+const static unsigned char *temp_number[10] = {zero, one, two, three, 
+    four, five, six, seven, eight, nine};
 
 Image location_icon = {
 	.image = (unsigned char *)no_location

@@ -315,6 +315,7 @@ void esp8266_clean_link_buff(char link) {
 	memset(ESP8266_link.buffXlink[link], '\0', ESP8266_BUFF_PER_LINK);
 }
 
+/************************ RESPONSE PARSER ***************************/
 #define esp8266_prune_buff() \
     *esp8.read = 0; \
     esp8.read = esp8.read == esp8.eof \

@@ -20,8 +20,8 @@
   */ 
   
 /* Includes ------------------------------------------------------------------*/
-#include "fonts.h"
-
+#include "Fonts.h"
+#include "FreeMono9pt7b.h"
 /** @addtogroup Utilities
   * @{
   */
@@ -980,6 +980,13 @@ sFONT Font8x8 = {
   .table = ASCII8x8_Table,
   .Width = 8, /* Width */
   .Height = 8, /* Height */
+};
+
+sFONT Font9x9 = {
+    .mul = 1,
+    .table = (const uint16_t *) FreeMono9pt7bBitmaps,
+    .Width = 9,
+    .Height = 9,
 };
    
 /**
