@@ -75,50 +75,6 @@
 #define ESP8266_AT_CWSAP 				"AT+CWSAP_DEF="
 #define ESP8266_AT_CWSAP_LEN			13
 
-
-/* ESP8266 AT command responses
-#define ESP8266_ST_OK 			"OK" 	// ESP8266 OK reply
-#define ESP8266_ST_OK_LEN 		2		// ESP8266 OK's length
-#define ESP8266_ST_OK_CODE 		1		// ESP8266 OK internal status ID
-
-
-#define ESP8266_ST_ERROR 		"ERROR"	// ESP8266 ERROR reply
-#define ESP8266_ST_ERROR_LEN 	5		// ESP8266 ERROR's length 
-#define ESP8266_ST_ERROR_CODE 	2		// ESP8266 ERROR internal status ID
-
-#define ESP8266_ST_FAIL 		"FAIL"	// ESP8266 FAIL reply
-#define ESP8266_ST_FAIL_LEN 	4		// ESP8266 FAIL's lengh
-#define ESP8266_ST_FAIL_CODE 	3		// ESP8266 FAIL internal status ID
-
-#define ESP8266_ST_GOT_IP 		"GOT IP"	// ESP8266 WIFI GOT IP reply
-#define ESP8266_ST_GOT_IP_LEN 	6		// ESP8266 WIFI GOT IP reply
-#define ESP8266_ST_GOT_IP_CODE 	4		// ESP8266 WIFI GOT IP reply
-
-#define ESP8266_ST_WRAP_CODE 	5		// Wrap symbol
-
-#define ESP8266_ST_HTTP_CLOSED 		"CLOSED" // HTTP Closed
-#define ESP8266_ST_HTTP_CLOSED_LEN 	6 	// HTTP Closed
-#define ESP8266_ST_HTTP_CLOSED_CODE 6 	// HTTP Closed
-
-#define ESP8266_ST_IPD 			"+IPD"
-#define ESP8266_ST_IPD_LEN 		4
-#define ESP8266_ST_IPD_CODE		7
-
-#define ESP8266_ST_READY 		"ready"
-#define ESP8266_ST_READY_LEN 	5
-#define ESP8266_ST_RESTART_CODE 8
-
-#define ESP8266_ST_CIPSTATE_CUR_IP 		"+CIPSTA_CUR:ip"
-#define ESP8266_ST_CIPSTATE_CUR_IP_LEN 	14
-#define ESP8266_ST_CIPSTATE_CUR_CODE 	9
-
-#define ESP8266_ST_CIPSTATUS_STATUS_STR "STATUS:"
-#define ESP8266_ST_CIPSTATUS_STATUS_LEN 7
-#define ESP8266_CIPSTATUS_APnIP_READY 	'2'
-#define ESP8266_CIPSTATUS_TcpUdp_READY 	'3'
-#define ESP8266_CIPSTATUS_TcpUdp_DISCON '4'
-#define ESP8266_CIPSTATUS_AP_NO_CONN 	'5'
-*/
 /* Settings values */
 #define ESP8266_CWMODE_STATION 			'1'	
 #define ESP8266_CWMODE_SOFTAP 			'2'	
@@ -164,11 +120,7 @@ typedef struct ESP8266_IPv4_t
 } ESP8266_IPv4_t;
 
 /* ESP8266 Variables */
-/* extern char ESP8266_AT_STATUS;
-extern char ESP8266_STATUS_TCP;
-extern char ESP8266_STATUS;*/
 extern struct ESP8266Status esp8_status;
-        
 extern ESP8266_Link_t ESP8266_link;
 extern ESP8266_IPv4_t ESP8266_IPv4;
 
