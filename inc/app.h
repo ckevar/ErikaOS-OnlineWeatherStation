@@ -7,10 +7,10 @@
 #define APP_H 
 
 // FSM States
-#define APP_FSM_WAITING					-4	// Waiting state 
-#define APP_FSM_ERR_FAIL 				-3 	// Error and fail state
-#define APP_FSM_ERROR 					-2 	// Error state
-#define APP_FSM_FAIL 	 				-1 	// Fail state
+#define APP_FSM_WAITING					35	// Waiting state 
+#define APP_FSM_ERR_FAIL 				34 	// Error and fail state
+#define APP_FSM_ERROR 					33 	// Error state
+#define APP_FSM_FAIL 	 				32 	// Fail state
 
 #define APP_FSM_RESTART_AT_NORMAL 		0
 #define APP_FSM_START					1	// Initial state 

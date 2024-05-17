@@ -40,6 +40,7 @@ enum ESP8Resp {
     ESP8_WRAP, 	        // Wrap symbol
     ESP8_LINK_CLOSED,   // Link Closed
     ESP8_IPData,	    // Arriving data from link
+    ESP8_TCP_PULLIN,    // Data itself
     ESP8_READY,         // Device is ready
     ESP8_IP, 	        // Data contains IP
     ESP8_STATUS,        // WiFI connection status 

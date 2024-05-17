@@ -12,7 +12,7 @@
 								"Host: ip-api.com\r\n"\
 								"User-Agent: ERIKA RTOS/ESP8266/v1.0\r\n\r\n"
 								
-#define IPAPI_GET_RESOURCE_LEN 			77	// length of requested resources
+#define IPAPI_GET_RESOURCE_LEN 			"77"	// length of requested resources
 #define IPAPI_GET_RESOURCE_LEN_STR 		"77"
 #define IPAPI_GET_RESOURCE_LEN_STR_LEN 	2
 

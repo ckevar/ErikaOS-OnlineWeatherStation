@@ -482,8 +482,8 @@ static unsigned char esp8266_http_parse(char *tmp_ptr) {
 			/* Query Content */
 			esp8266_http_query_Content(tmp_ptr + cursor, content_length);
 		} 
-
-		esp8_status.tcp |= TCP_BUFF_FULL;
+        esp8_status.cmd = ESP8_TCP_PULLIN;
+		// esp8_status.tcp |= TCP_BUFF_FULL;
 		return 0;
 	} 
 	return 1;
@@ -571,9 +571,13 @@ static void esp8266_cipstate_parse(void) {
 static uint8_t on_closing_link() {
     uint8_t i;
     
-    if(esp8_status.tcp & TCP_BUFF_FULL)
+    if(esp8_status.cmd == ESP8_TCP_PULLIN)
         return 1;
 
+    /*
+    if(esp8_status.tcp & TCP_BUFF_FULL)
+        return 1;
+    */
 	esp8_status.cmd = ESP8_LINK_CLOSED;
     esp8_status.tcp |= TCP_PORT_CLOSE;
     
