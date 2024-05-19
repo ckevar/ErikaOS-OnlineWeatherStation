@@ -4,6 +4,10 @@
 #include "state.h"
 #include "esp8266_driver.h"
 #include "esp8266_network.h"
+#include "esp8266_powerup.h"
+#include "esp8266_netstat.h"
+#include "esp8266_client.h"
+#include "esp8266_link.h"
 #include "ipapi_json.h"
 #include "openweather.h"
 #include "json_parser.h"
@@ -16,14 +20,15 @@
 #include "lcd_log.h"
 #include "stm32f4_discovery.h"
 
-#define TIMEOUT_ON_WAITING                  64
+#define TIMEOUT_ON_WAITING                  128
 
+/*
 #define update_state(curr_state, prev_state) \
 	esp8_status.cmd = ESP8_UNKNOWN; \
     prev_state = curr_state; \
 	curr_state = APP_FSM_WAITING; \
     timeout_waiting = 0
-
+*/
 WebAppBuilder_t webAppOptions;
 
 static char OWAPI_HTTP_MSG2REQ[250];
@@ -113,92 +118,28 @@ static void OWAPI_process_result(uint8_t *success, char *tmp, void *arg)
 	*success = 0;
 }
 
-static short fsm_on_tcp_connection(const uint16_t superstate) {
-
-    switch(esp8_status.wifi) {
-    case WiFi_Ready:
-    case TCP_UDP_Lost:
-        // switch(APP_FSM_SUPER_STATE) {
-        switch(superstate) {
-        case ESP8SS_NETSTATUS:  // case APP_FSM_SUPER_NORMAL:
-        case ESP8SS_CLIENT:
-        case APP_FSM_IPAPI_CIPSTART:
-		    // return APP_FSM_IPAPI_CIPSTART;
-            return MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
-
-        case APP_FSM_OW_API_CIPSTART:
-		    return APP_FSM_OW_API_CIPSTART;
-
-        /*
-        case ESP8SS_APP:
-            return MKSTATE(ESP8SS_APP, ESP8S_READY);
-        */
-
-        default:
-		    return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
-        }
-
-    case TCP_UDP_Ready:
-		 return MKSTATE(ESP8SS_NETSTATUS, ESP8S_NETKILL);
-
-    case WiFi_No_AP:
-        return MKSTATE(ESP8SS_NETSTATUS, ESP8S_IFCONFIG);
-
-	default:
-        return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
-    }
-}
-
 /*
  * After each AT command sent to the ESP8266, it replies with an OK
  * so the APP FSM is held until an 'OK' reply is given back. Sometimes 
  * other replies are considered, such as: '>', '+IPD', etc.
  */
 
-static uint16_t LUT_onOK_initial_setup(uint8_t prev_state) {
-    uint16_t LUT_OK[ESP8_INITIAL_SETUP_COUNT] = {
-        [ESP8S_RESTART]     = MKSTATE(ESP8SS_ON_HOLD, 0),
-        [ESP8S_CHECK_DEV]   = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_STATION_MODE),
-        [ESP8S_STATION_MODE]= MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_MULTI_CONN),
-        [ESP8S_MULTI_CONN]  = MKSTATE(ESP8SS_NETSTATUS, ESP8S_IFCONFIG)
-    };
+static uint16_t LUT_onOK(struct StateS *s) {
+    enum ESP8NetManagerState supers;
+    supers = SUPERSTATE(*s->state);
 
-    if (prev_state > ESP8_INITIAL_SETUP_COUNT)
-        return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
-
-    return LUT_OK[prev_state];
-}
-
-static uint16_t LUT_onOK_client(uint16_t prev_state) {
-    uint16_t LUT_OK[ESP8_CLIENT_COUNT] = {
-        [ESP8S_CONNECT] = MKSTATE(ESP8SS_CLIENT, ESP8S_RMALLOC),
-        [ESP8S_RMALLOC] = MKSTATE(APP_FSM_WAITING, 0),
-        [ESP8S_CWRITE]   = MKSTATE(APP_FSM_WAITING, 0),
-        [ESP8S_CLOSE]   = MKSTATE(ESP8SS_CLIENT, ESP8S_DONE),
-    };
-
-    if (prev_state > ESP8_CLIENT_COUNT)
-        return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
-
-    return LUT_OK[prev_state];
-}
-
-static short LUT_onOK(struct StateS *s) {
-    uint16_t maj_state;
-    maj_state = SUPERSTATE(*s->state);
-
-	switch (maj_state) {
+	switch (supers) {
     case ESP8SS_INITIAL_SETUP:
-        return LUT_onOK_initial_setup(SUBSTATE(*s->state));
+        return LUT_OK_powerup(SUBSTATE(*s->state));
 
     case ESP8SS_NETSTATUS:
         if(SUBSTATE(*s->state) == ESP8S_NETSTAT)
-            return fsm_on_tcp_connection(SUPERSTATE(*s->state));
+            return LUT_OK_netstat(SUPERSTATE(*s->state));
 
         return MKSTATE(APP_FSM_WAITING, 0);
     
     case ESP8SS_CLIENT:
-        return LUT_onOK_client(SUBSTATE(*s->state));
+        return LUT_OK_client(SUBSTATE(*s->state));
 	
 	/***** settings *****/
 	case APP_FSM_SET_AP:
@@ -221,7 +162,6 @@ static short LUT_onOK(struct StateS *s) {
 
     case APP_FSM_SHUTDOWN_WEBSERVER:
 	    return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_STATION_MODE);
-    
 	/********************/
 	}
 }
@@ -232,56 +172,6 @@ static short LUT_onOK(struct StateS *s) {
  * and tells the STM that it's ready to receive the http content (or data)
  * to be transmitted.
  */ 
-static short esp8266_fsm_prev_OnWrap(const short prev_state) {
-    uint16_t supers = SUPERSTATE(prev_state);
-
-    switch(supers) {
-    case ESP8SS_CLIENT:
-        return MKSTATE(ESP8SS_CLIENT, ESP8S_CWRITE);
-    case ESP8SS_SERVER:
-        return MKSTATE(ESP8SS_SERVER, ESP8S_SWRITE);
-    
-    /*
-    case APP_FSM_WEBAPP_OK_CLIENT0:
-    case APP_FSM_NEW_SSIDnPSWD_CONNECTED:
-    case APP_FSM_TRY_AGAIN_WA_SSID_AND_PASSWORD:
-		return APP_FSM_WEBAPP_OK_CLIENT1;
-    */
-    }
-}
-
-
-/*
- * If ESP8266 isnt connected to an access point, it retrieves 0.0.0.0 as
- * IP address. However it doesnt tell anything about whether it has internet
- * access or not.
- */ 
-#define MAX_ATTEMPTS    100
-static char on_WiFiStatus(const uint16_t prev_state, char *wifi_state) {
-
-	static char attempts = 0;
-
-	if (prev_state == ESP8S_IFCONFIG) {
-		if (memcmp(ESP8266_IPv4.ip, "0.0.0.0", 7) == 0) {
-
-			*wifi_state = WiFi_NO_CONNECTED;
-			attempts++;
-
-			if (attempts > MAX_ATTEMPTS) {
-                attempts = 0;
-		        return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
-            }
-
-            return MKSTATE(ESP8SS_NETSTATUS, ESP8S_IFCONFIG);
-		
-		}
-		else {
-			attempts = 0;
-            *wifi_state = WiFi_CONNECTED;
-			return MKSTATE(ESP8SS_NETSTATUS, ESP8S_NETSTAT);
-		}
-	}
-}
 
 /* 
  * Processes arrival data from the APIs 
@@ -398,28 +288,6 @@ static void app_http_from_WebApp(char *arriving_http, char link_id, short *prev_
  * Function to process the incoming requested or arrival HTTP data 
  */
 
-static uint8_t app_http_process(uint16_t supers, void (*callback)(uint8_t*, char*, void*), void *arg) {
-	char link_id, i = 0;
-	char *tmp;
-    uint8_t success;
-
-	while((ESP8266_link.open[i] == 0) && (i < 5)) i++;
-
-	link_id = ESP8266_link.open[i] - 1;
-	tmp = ESP8266_link.buffXlink[link_id];
-    
-    if (supers == ESP8SS_CLIENT)
-        (*callback)(&success, tmp, arg);
-    
-    /*
-    else if (supers == ESP8SS_SERVER)
-	    app_http_from_WebApp(tmp, link_id, prev_state, curr_state, snp);
-
-    */
-    return success;
-}
-
-
 /*
  * This is called by a another Taks that will restart the APP FSM to 
  * update the weather info.
@@ -428,8 +296,8 @@ void app_fsm_restart(void) {
 	INTERNAL_EVENT_UPDATE = 1;
 }
 
-static short fsm_on_http_close(short *prev_state, char *wifi) {
-    uint16_t supers = SUPERSTATE(*prev_state);
+static uint16_t fsm_on_http_close(uint16_t *prev_state, char *wifi) {
+    enum ESP8NetManagerState supers = SUPERSTATE(*prev_state);
 
     switch(supers) {
     case ESP8SS_CLIENT:
@@ -463,8 +331,8 @@ static short fsm_on_http_close(short *prev_state, char *wifi) {
     } 
     */  
 }
-
-static uint16_t LUT_onPULLIN(uint16_t supers) {
+/*
+static uint16_t LUT_onPULLIN(enum ESP8NetManagerState supers) {
     if(supers == ESP8SS_CLIENT)
         return MKSTATE(supers, ESP8S_CREAD);
 
@@ -474,7 +342,7 @@ static uint16_t LUT_onPULLIN(uint16_t supers) {
     else
         return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
 }
-
+*/
 static uint16_t fsm_on_waiting_state(struct StateS *s) {
     switch(esp8_status.cmd) {
     case ESP8_OK: 
@@ -491,8 +359,7 @@ static uint16_t fsm_on_waiting_state(struct StateS *s) {
 	    return esp8266_fsm_prev_OnWrap(*s->state);
 
     case ESP8_TCP_PULLIN:
-        return LUT_onPULLIN(SUPERSTATE(*s->state));
-        // return app_http_process(s->state, s->nx_state, NULL);
+        return LUT_link_pullin(SUPERSTATE(*s->state));
 
     case ESP8_LINK_CLOSED:
 	    esp8_status.cmd = ESP8_UNKNOWN;
@@ -516,29 +383,15 @@ static uint16_t fsm_on_waiting_state(struct StateS *s) {
 
 }
 
-static short LUT_on_err_initital_setup(uint16_t state) {
-    uint16_t LUT[ESP8_INITIAL_SETUP_COUNT] = {
-        [ESP8S_RESTART]     = MKSTATE(APP_FSM_WAITING, 0),
-        [ESP8S_CHECK_DEV]   = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART),
-        [ESP8S_STATION_MODE]= MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV),
-        [ESP8S_MULTI_CONN]  = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV)
-    };
-
-    if(state > ESP8_INITIAL_SETUP_COUNT)
-        return MKSTATE(APP_FSM_ERR_FAIL, 0);
-
-    return LUT[state];
-}
-
 static short fsm_on_err_fail(struct StateS *s) {
-    uint16_t supers;
+    enum ESP8NetManagerState supers;
 
     supers = SUPERSTATE(*s->state);
     
     switch(supers) {
 
     case ESP8SS_INITIAL_SETUP:
-        return LUT_on_err_initital_setup(SUBSTATE(*s->state));
+        return LUT_on_err_powerup(SUBSTATE(*s->state));
 
     /*case APP_FSM_TRY_NEW_SSID_AND_PASSWORD:
 	    return APP_FSM_TRY_AGAIN_WA_SSID_AND_PASSWORD;
@@ -560,48 +413,34 @@ static short fsm_on_err_fail(struct StateS *s) {
     case ESP8SS_CLIENT:
 	    return MKSTATE(ESP8SS_NETSTATUS, ESP8S_IFCONFIG);
     
-    case APP_FSM_OW_API_REQ_WEATHER: 
-    case APP_FSM_IPAPI_REQ_LOCATION:
-    /* case ESP8S_MULTI_CONN: */
-        return APP_FSM_WAITING; 
-
     default:
         return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
     }
 }
 
-static uint16_t LUT_timeout_initial_setup(uint16_t state) {
-    uint16_t LUT[ESP8_INITIAL_SETUP_COUNT] = {
-        [ESP8S_RESTART]     = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART),
-        [ESP8S_CHECK_DEV]   = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART),
-        [ESP8S_STATION_MODE]= MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV),
-        [ESP8S_MULTI_CONN]  = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV),
-    };
 
-    if (state > ESP8_INITIAL_SETUP_COUNT) 
-        return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV);
-    
-    return LUT[state];
-}
 
 static short fsm_on_timeout(unsigned short prev_state) {
-    uint16_t maj_state;
-    maj_state = SUPERSTATE(prev_state);
+    enum ESP8NetManagerState supers;
+    supers = SUPERSTATE(prev_state);
 
-    switch(maj_state) {
+    switch(supers) {
     case ESP8SS_INITIAL_SETUP:
-        return LUT_timeout_initial_setup(SUBSTATE(prev_state));
+        return LUT_timeout_powerup(SUBSTATE(prev_state));
 
-    case APP_FSM_IPAPI_REQ_LOCATION:
-    case APP_FSM_IPAPI_CIPSTART:
-    case ESP8S_MULTI_CONN:
-        return ESP8S_CHECK_DEV;
-        // return MKDSTATE(CHECK_CONN, CHECK_DEV);
-
-    case APP_FSM_WEBAPP_OK_CLIENT0:
-    case APP_FSM_CLEAN_AP_BUFFER:
-    case APP_FSM_TRY_NEW_SSID_AND_PASSWORD:
-    case APP_FSM_OW_API_REQ_WEATHER:
+    /*
+    case APP_FSM_IPAPI_REQ_LOCATION:        9
+    case APP_FSM_IPAPI_CIPSTART:            7
+        return MKESP8S_CHECK_DEV;
+    */
+    case ESP8SS_CLIENT:
+        return MKSTATE(ESP8SS_NETSTATUS, ESP8S_CHECK_DEV);
+    /*
+    case APP_FSM_WEBAPP_OK_CLIENT0:         24
+    case APP_FSM_CLEAN_AP_BUFFER:           26
+    case APP_FSM_TRY_NEW_SSID_AND_PASSWORD: 27
+    case APP_FSM_OW_API_REQ_WEATHER:        13 
+    */
         return APP_FSM_WAITING;
         // return MKSTATE(WAITING, 0)
 
@@ -615,156 +454,7 @@ static short fsm_on_timeout(unsigned short prev_state) {
  * (replies) in order to get the weather info and/or set the configurations
  * to connect with an Access Point.
  */
-
-void on_initial_setup(struct StateS *state) {
-    uint16_t nx_state;
-    uint8_t timeout_waiting;
-    nx_state = SUBSTATE(*state->nx_state);
-    
-    switch(nx_state) {
-    case ESP8S_RESTART:
-		// Restarts the ESP8266
-		UI_WriteState("Restarting");
-		esp8266_restart();
-		*state->wifi_mode = WiFi_SETTINGUP;
-		UI_clear_progress();
-		UI_WiFiNo();
-		update_state(*state->nx_state, *state->state);
-		APP_FSM_SUPER_STATE =  APP_FSM_SUPER_NORMAL;
-		break;
-
-	case ESP8S_CHECK_DEV:
-		// Sends AT to know if the ESP8266 is available
-		UI_WriteState("Check WiFi Dev");
-		UI_set_progress(nx_state, ESP8_INITIAL_SETUP_COUNT - 1);
-		UI_WiFiNo();
-		esp8266_at();
-		update_state(*state->nx_state, *state->state);
-		APP_FSM_SUPER_STATE =  APP_FSM_SUPER_NORMAL;
-		break;
-
-    case ESP8S_STATION_MODE:
-		// Sets the ESP8266 to work as a WiFi station
-        UI_clear_progress();
-		UI_WriteState("Station mode");
-		esp8266_set_CWMODE(ESP8266_CWMODE_STATION);
-		UI_set_progress(nx_state, ESP8_INITIAL_SETUP_COUNT - 1);
-		update_state(*state->nx_state, *state->state);		
-		break;
-
-	case ESP8S_MULTI_CONN:
-	    UI_WriteState("Force Multi Connection");
-		esp8266_set_CIPMUX(ESP8266_CIPMUX_MULTI_CON);
-		UI_set_progress(nx_state, ESP8_INITIAL_SETUP_COUNT - 1);
-		update_state(*state->nx_state, *state->state);
-		break;
-    }
-    *state->timeout = timeout_waiting;
-}
-
-void on_check_connection(struct StateS *state) {
-    uint16_t nx_state;
-    uint8_t timeout_waiting;
-    nx_state = SUBSTATE(*state->nx_state);
-
-    switch(nx_state) {
-    case ESP8S_IFCONFIG: // IFCONFIG
-        // Checks if the ESP8266 is connected to an Access Point
-		UI_WriteState("Getting IP");
-        UI_clear_progress();
-		esp8266_get_CIPSTA_CUR();
-
-	    UI_set_progress(nx_state, ESP8_NETSTATUS_COUNT - 1);
-		UI_WiFiSettingUp();
-		update_state(*state->nx_state, *state->state);
-		break;
-
-	case ESP8S_NETSTAT: // CONN_STATUS
-		// Check if there's an open port on the ESP8266.
-		UI_WriteState("Getting Open Ports");
-		esp8266_get_CIPSTATUS();
-		UI_WiFiConnected();
-		UI_set_progress(nx_state, ESP8_NETSTATUS_COUNT - 1);
-		update_state(*state->nx_state, *state->state);
-		break;
-
-	case ESP8S_NETKILL:
-		// If there's an open port, it should be closed.
-		UI_WriteState("Kill ports");
-		esp8266_close_tcp(0); // 0 for Single connections CMUX = 0
-		UI_set_progress(nx_state, ESP8_NETSTATUS_COUNT - 1);
-		update_state(*state->nx_state, *state->state);
-    }
-    *state->timeout = timeout_waiting;
-}
-
-#define UI_WRITESTATE(a, a_len, b, b_len)   memcpy(msg, a, a_len); \
-                                            memcpy(msg + a_len, b, b_len); \
-                                            UI_WriteState(msg)
-
-void on_client0(struct StateS *state, struct Socket *so) {
-    uint16_t nx_state;
-    uint8_t timeout_waiting;
-    char msg[64] = {0};
-    uint8_t sucess;
-
-    nx_state = SUBSTATE(*state->nx_state);
-    switch(nx_state) {
-    case ESP8S_CONNECT:
-        UI_clear_progress();
-        UI_WRITESTATE("Connect to ", 11, so->domain_port, so->dsize);
-		esp8266_set_DNS(so->link, so->domain_port, so->dsize);
-		UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);
-		update_state(*state->nx_state, *state->state);
-		APP_FSM_SUPER_STATE = APP_FSM_IPAPI_CIPSTART;
-		break;
-
-    case ESP8S_RMALLOC:
-        UI_WRITESTATE("Remote malloc ", 14, so->domain_port, so->dsize); 
-		esp8266_set_CIPSEND_link(so->link, so->rsize, strnlen(so->rsize, 3));
-		UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);
-		update_state(*state->nx_state, *state->state);
-        break;
-
-    case ESP8S_CWRITE:
-        UI_WRITESTATE("Request ", 6, so->domain_port, so->dsize); 
-		esp8266_req_HTML(so->request, atoi(so->rsize));
-		UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);
-		update_state(*state->nx_state, *state->state);
-        break;
-
-    case ESP8S_CREAD:
-        UI_WRITESTATE("Read ", 5, so->domain_port, so->dsize);
-        UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);
-        timeout_waiting = 0;
-        esp8_status.cmd = ESP8_UNKNOWN;
-        if (app_http_process(ESP8SS_CLIENT, so->callback, so->arg) == 0)
-            *state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
-        else
-            *state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
-
-        break;
-
-    case ESP8S_CLOSE:
-        // Closes connection with OpenWeather
-		UI_WRITESTATE("Close ", 6, so->domain_port, so->dsize);
-        UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);
-        if (esp8_status.cmd != ESP8_LINK_CLOSED) {
-		    esp8266_close_tcp(so->link);
-			update_state(*state->nx_state, *state->state);
-            break;
-        }
-
-    case ESP8S_DONE:
-        esp8_status.cmd = ESP8_UNKNOWN;
-        UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);
-		*state->nx_state = MKSTATE(ESP8SS_READY, 0);
-		break;
-
-    }
-}
-
-void on_client(struct StateS *s) {
+__attribute__((weak)) void client_function(struct StateS *s)  {
     static uint8_t request;
     struct Socket socket0;
 
@@ -778,7 +468,7 @@ void on_client(struct StateS *s) {
         socket0.rsize = IPAPI_GET_RESOURCE_LEN,
         socket0.callback = &IPAPI_process_result,
         socket0.arg = NULL,
-        on_client0(s, &socket0);
+        fsm_client(s, &socket0);
 
         if (SUPERSTATE(*s->nx_state) == ESP8SS_READY) {
             request++;
@@ -792,7 +482,7 @@ void on_client(struct StateS *s) {
         socket0.request = OWAPI_HTTP_MSG2REQ;
         socket0.rsize = OWAPI_HTTP_MSG2REQ_LEN_STR;
         socket0.callback = &OWAPI_process_result,
-        on_client0(s, &socket0);
+        fsm_client(s, &socket0);
 
         if(SUPERSTATE(*s->nx_state) == ESP8SS_READY)
             request = 0;
@@ -805,7 +495,7 @@ void app_fsm_app(void) {
     static char wifi_status = WiFi_NO_CONNECTED;
     static uint8_t timeout_waiting;
     static struct StateS nu_state;
-    uint16_t maj_state;
+    enum ESP8NetManagerState supers;
     /* SSID AND PSW for ESP */
 	static SSIDnPSWD_t ssidNpswd;
 
@@ -832,19 +522,19 @@ void app_fsm_app(void) {
 		state =  MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
 	}
 	/****************************************/
-    maj_state = SUPERSTATE(*nu_state.nx_state);
-	switch (maj_state) {
+    supers = SUPERSTATE(*nu_state.nx_state);
+	switch (supers) {
       
         case ESP8SS_INITIAL_SETUP:
-            on_initial_setup(&nu_state);
+            fsm_powerup(&nu_state);
             break;
 
         case ESP8SS_NETSTATUS:
-            on_check_connection(&nu_state);
+            fsm_netstat(&nu_state);
             break;
 
         case ESP8SS_CLIENT:
-            on_client(&nu_state);
+            client_function(&nu_state);
             break;
         
         case ESP8SS_READY:
@@ -860,10 +550,10 @@ void app_fsm_app(void) {
 			wifi_status = WiFi_SETTINGUP;
 			UI_clear_progress();
 			UI_SettingsOn();
-			UI_set_progress(nx_state - APP_FSM_IDLE,\
+			/*UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+                            */
 			update_state(nx_state, state);
-			APP_FSM_SUPER_STATE = APP_FSM_SUPER_SETTINGS;
 			break;
 
 		case APP_FSM_SET_AP:
@@ -871,18 +561,20 @@ void app_fsm_app(void) {
 			UI_clear_progress();
 			UI_WriteState("Enabling WiFi");
 			esp8266_set_CWMODE(ESP8266_CWMODE_STATION_N_SOFTAP);
-			UI_set_progress(nx_state - APP_FSM_IDLE,\
+			/*UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+                            */
 			update_state(nx_state, state);
-            APP_FSM_SUPER_STATE = APP_FSM_SUPER_SETTINGS;
 			break;
 
 		case APP_FSM_SET_WPA:
 			// Sets the ESP8266 Access Point SSID and Password
 			UI_WriteState("Configurations on WiFi");
 			esp8266_set_CWSAP(APP_AP_CONFIGURATION, APP_AP_CONFIGURATION_LEN);
-			UI_set_progress(nx_state - APP_FSM_IDLE,\
+			/*
+            UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+            */
 			update_state(nx_state, state);
 			break;
 
@@ -890,9 +582,10 @@ void app_fsm_app(void) {
 			// Sends to allow multiplce connection on the ESP8266
 			UI_WriteState("Enabling multiple connection");
 			esp8266_set_CIPMUX(ESP8266_CIPMUX_MULTI_CON);
-
+            /*
 			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+            */
 			update_state(nx_state, state);
 			break;
 
@@ -901,8 +594,10 @@ void app_fsm_app(void) {
 			UI_WriteState("Enabling web server");
 			esp8266_clean_link_buff(0);
 			esp8266_enable_HTTPServer_P80();
-			UI_set_progress(nx_state - APP_FSM_IDLE,\
+			/*
+            UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+            */
 			update_state(nx_state, state);
 			esp8_status.tcp = ESP8_UNKNOWN;
 			break;
@@ -911,8 +606,10 @@ void app_fsm_app(void) {
 			// Idle state waiting for clients to request or submit 
 			// HTTP information on the webserver
 			UI_WriteState("Waiting for connections");
-			UI_set_progress(nx_state - APP_FSM_IDLE,\
+			/*
+            UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+            */
 			state = nx_state;
 			nx_state = APP_FSM_WAITING;
 			break;
@@ -921,8 +618,10 @@ void app_fsm_app(void) {
 			// Sends the requested HTML
 			UI_WriteState("Replying");
 			esp8266_send_html();
+            /*
 			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+            */
 			esp8_status.tcp = ESP8_UNKNOWN;
 			update_state(nx_state, state);
 			break;
@@ -930,8 +629,10 @@ void app_fsm_app(void) {
 		case APP_FSM_CLEAN_AP_BUFFER:
 			// Idle state to get out, i think it's useless 
 			UI_WriteState("Transition state");
+            /*
 			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+            */
 			state = nx_state;
 			nx_state = APP_FSM_WAITING;
 			esp8_status.tcp = ESP8_UNKNOWN;
@@ -943,9 +644,10 @@ void app_fsm_app(void) {
 			UI_WriteState("Trying new SSID");
 			esp8266_set_SSID_and_PASS(ssidNpswd.ssidNpassword, ssidNpswd.len);
 			UI_WiFiSettingUp();
+            /*
 			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-
+            */
 			update_state(nx_state, state);
 			break;
 
@@ -969,9 +671,11 @@ void app_fsm_app(void) {
 			esp8266_load_html(webAppOptions.http, webAppOptions.http_len);
 
 			UI_WiFiConnected();
+
+            /*
 			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-
+            */
 			update_state(nx_state, state);
 			break;
 
@@ -995,8 +699,10 @@ void app_fsm_app(void) {
 
 			UI_WiFiNo();
 			// LCD_UsrLog("New SSID and Password Failed\r\n");
+            /*
 			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+            */
 			update_state(nx_state, state);
 			break;
 
@@ -1006,12 +712,14 @@ void app_fsm_app(void) {
 			esp8266_disable_HTTPServer_P80();
 
 			UI_SettingsOff();
+            /*
 			UI_set_progress(nx_state - APP_FSM_IDLE,\
 							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
+            */
 			update_state(nx_state, state);
 			break;
 		/****************************************/
-
+        case ESP8SS_ON_HOLD:
 		case APP_FSM_WAITING:
             
             nx_state = fsm_on_waiting_state(&nu_state);
@@ -1024,8 +732,9 @@ void app_fsm_app(void) {
 
 			break;
 
+        case ESP8SS_ERROR:
 		case APP_FSM_ERR_FAIL:
-			UI_set_err_progress(state, APP_FSM_IDLE);
+			UI_set_err_progress(1, 1);
             nx_state = fsm_on_err_fail(&nu_state);
 			break;
 

@@ -368,7 +368,7 @@ static unsigned char esp8266_http_query_RESTMethod(void) {
 	return ESP8266_RESTMethod_UNKNOWN;
 }
 
-static unsigned char esp8266_http_query_Resource(char *res) {
+static uint16_t esp8266_http_query_Resource(char *res) {
 	unsigned char i = 0;
 	// Forward cursors until to catch the resource needed started
 	while(*esp8.read != '/') {
@@ -423,16 +423,18 @@ static unsigned short esp8266_http_query_ContentLength(void) {
 	return 0;
 }
 
-static void esp8266_http_query_Content(char *content, unsigned short len) {
-	unsigned rns = 0;
-
-	// skip until the end of the http header
-	while(rns < 4) {
+static void esp8266_html_skip_header(void) {
+    uint16_t rns = 0;
+    while(rns < 4) {
 		rns = ((*esp8.read == '\r') || (*esp8.read == '\n')) \
               ? rns + 1 \
               : 0;
         esp8266_prune_buff();
 	}
+}
+
+static void esp8266_http_query_Content(char *content, unsigned short len) {
+	uint16_t rns = 0;
 
 	// If there's plenty of available space in the buffer, the memory can be copied out
 	// in a single big chunk, otherwise, it gotta be copied in two chuncks.
@@ -449,6 +451,8 @@ static void esp8266_http_query_Content(char *content, unsigned short len) {
 	memcpy(content, esp8.read, len);
 	memset(esp8.read, 0, len);
 	esp8.read += len;
+    if(*(content + len - 1) == 0)
+        *content = 1;
 	content += len;
 	*content = 0;
 
@@ -461,8 +465,7 @@ static void esp8266_http_query_Content(char *content, unsigned short len) {
  ********************************************************/
 static unsigned char esp8266_http_parse(char *tmp_ptr) {
 	char rest_method = ESP8266_RESTMethod_UNKNOWN; 
-	unsigned char cursor = 0;
-	unsigned short content_length = 0;
+    uint16_t cursor, content_length, esp8_i;
 
 	/* Query REST Method */
 	rest_method = esp8266_http_query_RESTMethod();
@@ -478,6 +481,13 @@ static unsigned char esp8266_http_parse(char *tmp_ptr) {
 
 			/* Query Content-Length */
 			content_length = esp8266_http_query_ContentLength();
+            
+            esp8266_html_skip_header();
+            /* An approximation to know if all data from request has
+             * already arrived */
+            esp8_i = esp8.read - esp8.data;
+            esp8_i = (esp8_i + content_length) % ESP8266_BUFF_RX_LEN;
+            while(*(esp8_i + esp8.data - 1) == 0);
 
 			/* Query Content */
 			esp8266_http_query_Content(tmp_ptr + cursor, content_length);
@@ -639,7 +649,8 @@ void esp8266_response(void) {
             if (MATCH(ESP8_STATUS)) {
                 RESET_MATCH();
                 esp8_status.wifi = *esp8.read;
-                esp8266_prune_buff();
+                esp8266_prune_N_buff(7);
+                esp8_status.cmd = ESP8_OK;
                 return;
             }
 
@@ -653,7 +664,8 @@ void esp8266_response(void) {
             counter[ESP8_LINK_CLOSED]++;
             esp8_status.link = *esp8.read - 47;
             break;
-        
+        case '5':
+      
         case 'A': // "FAIL", "+CIPSTA_CUR:ip", "STATUS:"
             counter[ESP8_FAIL]++;
             counter[ESP8_IP]++;

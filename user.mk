@@ -5,6 +5,7 @@ vpath %.c src ui/src img/src
 
 CFLAGS += -Iinc -Iui/inc -Iimg/inc
 APP_SRCS += esp8266_driver.c app.c ui.c json_parser.c ipapi_json.c openweather.c web_app.c\
+esp8266_powerup.c esp8266_netstat.c esp8266_client.c esp8266_link.c\
 Widget.c Event.c Touch.c  STMPE811QTR.c\
 OW01d.c OW02d.c OW03d.c OW04d.c OW09d.c OW10d.c OW11d.c OW12d.c OW13d.c OW50d.c\
 zero.c one.c two.c three.c four.c five.c six.c seven.c eight.c nine.c\

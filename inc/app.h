@@ -12,6 +12,7 @@
 #define APP_FSM_ERROR 					33 	// Error state
 #define APP_FSM_FAIL 	 				32 	// Fail state
 
+/*
 #define APP_FSM_RESTART_AT_NORMAL 		0
 #define APP_FSM_START					1	// Initial state 
 
@@ -36,7 +37,7 @@
     // states to get spotify info
 
 #define APP_FSM_IDLE 					15
-
+*/
 #define APP_FSM_AP_RESET 				16 	// State to enable ESP8266 as WiFi
 #define APP_FSM_AP_RESTART 				17 	// State to enable ESP8266 as WiFi
 #define APP_FSM_AP_DUMMY_WAIT 			18
@@ -55,11 +56,6 @@
 
 #define APP_FSM_SUPER_NORMAL			0
 #define APP_FSM_SUPER_SETTINGS 			1
-
-// WiFi states
-#define WiFi_NO_CONNECTED	0
-#define WiFi_SETTINGUP		1
-#define WiFi_CONNECTED 		2
 
 // Define WPA password for the devices
 #define APP_AP_CONFIGURATION "\"Erika Weather\",\"ErikaRTOS\",1,4\r\n" // 1: channel, 4: WPA,WPA2.PSK Encryption

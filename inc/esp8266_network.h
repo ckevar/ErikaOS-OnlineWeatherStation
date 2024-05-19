@@ -3,38 +3,12 @@
 
 #include <stdint.h>
 
-enum ESP8InitialSetupState {
-    ESP8S_RESTART,
-    ESP8S_CHECK_DEV,
-    ESP8S_STATION_MODE,
-    ESP8S_MULTI_CONN,
-    ESP8_INITIAL_SETUP_COUNT,
-};
-
-enum ESP8CheckConnectionState {
-    ESP8S_IFCONFIG,
-    ESP8S_NETSTAT,
-    ESP8S_NETKILL,
-    ESP8_NETSTATUS_COUNT,
-
-};
-
-enum ESP8Client {
-    ESP8S_CONNECT,
-    ESP8S_RMALLOC,  // Remote Malloc
-    ESP8S_CWRITE,   // Client Write
-    ESP8S_CREAD,    // Client Read
-    ESP8S_CLOSE,
-    ESP8S_DONE,
-    ESP8_CLIENT_COUNT
-};
-
 enum ESP8Server {
     ESP8S_SWRITE,
     ESP8S_SREAD,
 };
 
-enum ESP8NetworkState {
+enum ESP8NetManagerState {
     ESP8SS_INITIAL_SETUP,
     ESP8SS_NETSTATUS,
     ESP8SS_AP,
@@ -62,5 +36,17 @@ struct Socket {
     void (*callback)(uint8_t*, char*, void*);
     void *arg;
 };
+
+// WiFi states
+#define WiFi_NO_CONNECTED	0
+#define WiFi_SETTINGUP		1
+#define WiFi_CONNECTED 		2
+
+#define update_state(curr_state, prev_state) \
+	esp8_status.cmd = ESP8_UNKNOWN; \
+    prev_state = curr_state; \
+	curr_state = MKSTATE(ESP8SS_ON_HOLD, 0); \
+    timeout_waiting = 0
+
 
 #endif
