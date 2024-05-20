@@ -46,7 +46,5 @@ struct Socket {
 	esp8_status.cmd = ESP8_UNKNOWN; \
     prev_state = curr_state; \
 	curr_state = MKSTATE(ESP8SS_ON_HOLD, 0); \
-    timeout_waiting = 0
-
 
 #endif

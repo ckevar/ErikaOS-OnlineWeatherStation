@@ -68,38 +68,33 @@ uint16_t on_WiFiStatus(const enum ESP8NetstatState prev_subs, char *wifi_state) 
 	}
 }
 
+
+/******** Finite State Machine *******/
+
 void fsm_netstat(struct StateS *state) {
-    uint16_t nx_state;
-    uint8_t timeout_waiting;
+    enum ESP8NetstatState nx_state;
     nx_state = SUBSTATE(*state->nx_state);
 
     switch(nx_state) {
     case ESP8S_IFCONFIG: // IFCONFIG
-        // Checks if the ESP8266 is connected to an Access Point
-		UI_WriteState("Getting IP");
-        UI_clear_progress();
 		esp8266_get_CIPSTA_CUR();
-
-	    UI_set_progress(nx_state, ESP8_NETSTATUS_COUNT - 1);
+        UI_WriteState("Getting IP");
+        UI_clear_progress();
 		UI_WiFiSettingUp();
-		update_state(*state->nx_state, *state->state);
 		break;
 
 	case ESP8S_NETSTAT: // CONN_STATUS
-		// Check if there's an open port on the ESP8266.
-		UI_WriteState("Getting Open Ports");
 		esp8266_get_CIPSTATUS();
+		UI_WriteState("Getting Open Ports");
 		UI_WiFiConnected();
-		UI_set_progress(nx_state, ESP8_NETSTATUS_COUNT - 1);
-		update_state(*state->nx_state, *state->state);
 		break;
 
 	case ESP8S_NETKILL:
-		// If there's an open port, it should be closed.
-		UI_WriteState("Kill ports");
 		esp8266_close_tcp(0); // 0 for Single connections CMUX = 0
-		UI_set_progress(nx_state, ESP8_NETSTATUS_COUNT - 1);
-		update_state(*state->nx_state, *state->state);
+		UI_WriteState("Kill ports");
     }
-    *state->timeout = timeout_waiting;
+
+    *state->timeout = 0;
+	UI_set_progress(nx_state, ESP8_NETSTATUS_COUNT - 1);
+	update_state(*state->nx_state, *state->state);
 }

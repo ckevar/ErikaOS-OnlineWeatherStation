@@ -57,10 +57,6 @@
 #define APP_FSM_SUPER_NORMAL			0
 #define APP_FSM_SUPER_SETTINGS 			1
 
-// Define WPA password for the devices
-#define APP_AP_CONFIGURATION "\"Erika Weather\",\"ErikaRTOS\",1,4\r\n" // 1: channel, 4: WPA,WPA2.PSK Encryption
-#define APP_AP_CONFIGURATION_LEN 33 
-
 
 typedef struct SSIDnPSWD_t {
 	char ssidNpassword[128];

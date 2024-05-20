@@ -331,18 +331,7 @@ static uint16_t fsm_on_http_close(uint16_t *prev_state, char *wifi) {
     } 
     */  
 }
-/*
-static uint16_t LUT_onPULLIN(enum ESP8NetManagerState supers) {
-    if(supers == ESP8SS_CLIENT)
-        return MKSTATE(supers, ESP8S_CREAD);
 
-    else if (supers == ESP8SS_SERVER)
-        return MKSTATE(supers, ESP8S_SREAD);
-    
-    else
-        return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
-}
-*/
 static uint16_t fsm_on_waiting_state(struct StateS *s) {
     switch(esp8_status.cmd) {
     case ESP8_OK: 
@@ -541,18 +530,22 @@ void app_fsm_app(void) {
             UI_WriteState("READY");
             timeout_waiting = 0;
             break;
+        
+        case ESP8SS_AP:
+            fsm_ap_config(&nu_state);
+            break;
 
 		/************************* SETTINGS FSMs *************************/
-		case APP_FSM_AP_RESTART:
+        /* Access Point */
+		/*case APP_FSM_AP_RESTART:
 			// Restarts the ESP8266
 			UI_WriteState("Restarting...");
 			esp8266_restart();
 			wifi_status = WiFi_SETTINGUP;
 			UI_clear_progress();
 			UI_SettingsOn();
-			/*UI_set_progress(nx_state - APP_FSM_IDLE,\
-							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-                            */
+			// UI_set_progress(nx_state - APP_FSM_IDLE,\
+			//				APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
 			update_state(nx_state, state);
 			break;
 
@@ -561,9 +554,8 @@ void app_fsm_app(void) {
 			UI_clear_progress();
 			UI_WriteState("Enabling WiFi");
 			esp8266_set_CWMODE(ESP8266_CWMODE_STATION_N_SOFTAP);
-			/*UI_set_progress(nx_state - APP_FSM_IDLE,\
-							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-                            */
+			// UI_set_progress(nx_state - APP_FSM_IDLE,\
+			//				APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
 			update_state(nx_state, state);
 			break;
 
@@ -571,13 +563,12 @@ void app_fsm_app(void) {
 			// Sets the ESP8266 Access Point SSID and Password
 			UI_WriteState("Configurations on WiFi");
 			esp8266_set_CWSAP(APP_AP_CONFIGURATION, APP_AP_CONFIGURATION_LEN);
-			/*
-            UI_set_progress(nx_state - APP_FSM_IDLE,\
-							APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
-            */
+            // UI_set_progress(nx_state - APP_FSM_IDLE,\
+			//				APP_FSM_SHUTDOWN_WEBSERVER - APP_FSM_IDLE);
 			update_state(nx_state, state);
 			break;
-
+        */
+        /* Server */
 		case APP_FSM_SET_AP_CIPMUX:
 			// Sends to allow multiplce connection on the ESP8266
 			UI_WriteState("Enabling multiple connection");
@@ -588,6 +579,7 @@ void app_fsm_app(void) {
             */
 			update_state(nx_state, state);
 			break;
+
 
 		case APP_FSM_SET_AP_SERVER:
 			// Asks the ESP8266 to create a webserver at port 80
