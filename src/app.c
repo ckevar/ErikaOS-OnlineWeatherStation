@@ -15,6 +15,11 @@
 
 #include "WidgetConfig.h"
 
+enum AppServerState {
+	SERVER_CONF,
+	SERVER_RUNNING,
+};
+
 static char OWAPI_HTTP_MSG2REQ[250];
 static char OWAPI_HTTP_MSG2REQ_LEN_STR[OWAPI_GET_RESOURCE_STR_LEN+1];
 
@@ -107,10 +112,6 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 }
 
 
-enum AppServerState {
-	SERVER_START,
-	SERVER_RUNNING,
-};
 
 static void IPAPI_process_result(uint8_t *success, char *tmp, void *arg) {	
 	uint16_t msg_size;
@@ -194,11 +195,11 @@ static void OWAPI_process_result(uint8_t *success, char *tmp, void *arg)
 void server_function(struct StateS *s) {
     static struct Socket socket;
     static SSIDnPSWD_t wifi_credentials;
-	static enum AppServerState server_state = SERVER_START;
+	static enum AppServerState server_state = SERVER_CONF;
     
 
 	switch(server_state){
-	case SERVER_START:
+	case SERVER_CONF:
 		socket.callback = &app_http_from_WebApp;
 		socket.arg = (void *)&wifi_credentials;
 		server_state = SERVER_RUNNING;
@@ -214,13 +215,20 @@ void server_function(struct StateS *s) {
 
 }
 
+enum AppClientState {
+	CLIENT0_CONF,
+	CLIENT0_EXEC,
+	CLIENT1_CONF,
+	CLIENT1_EXEC
+};
+
 void client_function(struct StateS *s)  {
 
-    static uint8_t request;
-    struct Socket socket0;
+    static enum AppClientState client_state;
+    static struct Socket socket0;
 
-    switch(request) {
-    case 0:
+    switch(client_state) {
+    case CLIENT0_CONF:
         UI_LocationUnavailable();
         socket0.link = 0,
         socket0.domain_port = IPAPI_JSON_DNS_PORT,
@@ -229,24 +237,33 @@ void client_function(struct StateS *s)  {
         socket0.rsize = IPAPI_GET_RESOURCE_LEN,
         socket0.callback = &IPAPI_process_result,
         socket0.arg = NULL,
+		client_state = CLIENT0_EXEC;
+
+	case CLIENT0_EXEC:
         fsm_client(s, &socket0);
 
         if (SUPERSTATE(*s->nx_state) == ESP8SS_READY) {
-            request++;
+            client_state = CLIENT1_CONF;
             *s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
+			UI_LocationAvailable();
         }
-        break;
-    case 1:
+        
+		break;
+
+    case CLIENT1_CONF:
         socket0.link = 1;
         socket0.domain_port = OWAPI_DNS_PORT;
         socket0.dsize = OWAPI_DNS_PORT_LEN;
         socket0.request = OWAPI_HTTP_MSG2REQ;
         socket0.rsize = OWAPI_HTTP_MSG2REQ_LEN_STR;
         socket0.callback = &OWAPI_process_result,
+		client_state = CLIENT1_EXEC;
+
+	case CLIENT1_EXEC:
         fsm_client(s, &socket0);
 
         if(SUPERSTATE(*s->nx_state) == ESP8SS_READY)
-            request = 0;
+            client_state = CLIENT0_CONF;
     }   
 
 }
