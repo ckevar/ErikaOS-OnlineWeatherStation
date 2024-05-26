@@ -278,6 +278,7 @@ static uint16_t fsm_on_http_close(uint16_t *prev_state, char *wifi) {
     case ESP8SS_SERVER:
     case ESP8SS_NETSTATUS:
 	case ESP8SS_STATION_CREDENTIALS:
+	case ESP8SS_INITIAL_SETUP:
         return MKSTATE(ESP8SS_ON_HOLD, 0);
     }
     /*
@@ -292,8 +293,10 @@ static uint16_t fsm_on_http_close(uint16_t *prev_state, char *wifi) {
     } 
     */  
 }
+static enum ESP8Resp resp_tmp;
 
 static uint16_t fsm_on_waiting_state(struct StateS *s) {
+	resp_tmp = esp8_status.cmd;
     switch(esp8_status.cmd) {
     case ESP8_OK: 
 	    esp8_status.cmd = ESP8_UNKNOWN;
@@ -529,6 +532,9 @@ void app_fsm_app(void) {
                 nx_state = fsm_on_timeout(state);
             }
 
+			if(*nu_state.nx_state == 65535)
+				*nu_state.nx_state = 0;
+
 			break;
 
         case ESP8SS_ERROR:
@@ -538,6 +544,9 @@ void app_fsm_app(void) {
 			break;
 
 	}
+
+	if(*nu_state.nx_state == 65535)
+		*nu_state.nx_state = 0;
 
 }
 
