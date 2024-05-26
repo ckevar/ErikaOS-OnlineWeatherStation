@@ -36,13 +36,20 @@ struct Socket {
 };
 
 // WiFi states
-#define WiFi_NO_CONNECTED	0
-#define WiFi_SETTINGUP		1
-#define WiFi_CONNECTED 		2
+enum WifiStatus {
+	WiFi_NO_CONNECTED,
+	WiFi_SETTINGUP,
+	WiFi_CONNECTED,
+};
 
 #define update_state(curr_state, prev_state) \
 	esp8_status.cmd = ESP8_UNKNOWN; \
     prev_state = curr_state; \
 	curr_state = MKSTATE(ESP8SS_ON_HOLD, 0); \
+
+void app_fsm_app(void);		// runs the Finite-State Machine
+void app_fsm_restart(void);
+void server_function(struct StateS *s);
+void client_function(struct StateS *s);
 
 #endif

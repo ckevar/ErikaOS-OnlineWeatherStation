@@ -54,6 +54,7 @@
 #include "lcd_log.h"
 
 #include "esp8266_driver.h"
+#include "esp8266_network.h"
 #include "app.h"
 
 #include "Widget.h"
