@@ -9,80 +9,94 @@
 // tmp header
 #include "lcd_log.h"
 
-static char webAppBuff[512];
+static char webAppBuff[750];
 
-static unsigned short addCL_and_html(char *http, char *cl, char cll,\
-									 char *html, unsigned short html_len)
+static unsigned short addcontent(char *http, char *html, uint16_t size)
 {
-		memcpy(http, cl, cll);
-		http += cll;
+		/* Set header ending */
 		memcpy(http, "\r\n\r\n", 4);
 		http += 4;
-		memcpy(http, html, html_len);
-		http += html_len;
-		return cll + 4 + html_len;
+
+		/* Set content */
+		memcpy(http, html, size);
+		http += size;
+
+		return 4 + size;
 }
-char build_HTTP(WebAppBuilder_t *WAOpt)
-{
-	WAOpt->http = webAppBuff;  
-	char *tmp = WAOpt->http;
+
+#define HTTPHEADERcpy(dest, head)	memcpy(dest, head##_STR, head##_LEN);\
+									dest += head##_LEN
+
+#define HTTPCONTENTcpy(dest, cont)	addcontent(dest, cont##_STR,\
+									cont##_LEN)
+
+static int16_t mkHTTPHeader(WebAppBuilder_t *wbuilder) {
+	char *tmp = wbuilder->http;
 
 	// HTTP STATUS CODE / HTTP/1.1 <code>
-	if (WAOpt->status == WEBAPP_STATUS_NOT_FOUND) {
-		memcpy(tmp, WEBAPP_STATUS_NOT_FOUND_STR, WEBAPP_STATUS_NOT_FOUND_LEN);
-		tmp += WEBAPP_STATUS_NOT_FOUND_LEN;
+	if (wbuilder->status == HTTP_NOT_FOUND) {
+		HTTPHEADERcpy(tmp, HTTP_NOT_FOUND);
 	}
-	else if (WAOpt->status == WEBAPP_STATUS_OK) {
-		memcpy(tmp, WEBAPP_STATUS_OK_STR, WEBAPP_STATUS_OK_LEN);
-		tmp += WEBAPP_STATUS_OK_LEN;
+	else if (wbuilder->status == HTTP_OK) {
+		HTTPHEADERcpy(tmp, HTTP_OK);
 	}
-	else return -1;
+	else {
+		return -1;
+	}
 
 	// Set content type
-	if (WAOpt->content_type == WEBAPP_CONTENT_TYPE_TEXT_HTML) {
-		memcpy(tmp, WEBAPP_CONTENT_TYPE_TEXT_HTML_STR, WEBAPP_CONTENT_TYPE_TEXT_HTML_LEN);
-		tmp += WEBAPP_CONTENT_TYPE_TEXT_HTML_LEN;
+	if (wbuilder->content_type == HTTP_CONTENT_TYPE_TEXT_HTML) {
+		HTTPHEADERcpy(tmp, HTTP_CONTENT_TYPE_TEXT_HTML);
+	} else {
+		return -1;
 	}
 
 	// Set connection
-	if (WAOpt->connection == WEBAPP_CONN_KEEP_ALIVE) {
-		memcpy(tmp, WEBAPP_CONN_KEEP_ALIVE_STR, WEBAPP_CONN_KEEP_ALIVE_LEN);
-		tmp += WEBAPP_CONN_KEEP_ALIVE_LEN;
+	if (wbuilder->connection == HTTP_CONN_KEEP_ALIVE) {
+		HTTPHEADERcpy(tmp, HTTP_CONN_KEEP_ALIVE);
 	} else {
-		// By default the connection sent will be closed
-		memcpy(tmp, WEBAPP_CONN_CLOSE_STR, WEBAPP_CONN_CLOSE_LEN);
-		tmp += WEBAPP_CONN_CLOSE_LEN;
+		HTTPHEADERcpy(tmp, HTTP_CONN_CLOSE);
 	}
+	
+	return tmp - wbuilder->http;
+}
+
+char mkHTTP(WebAppBuilder_t *WAOpt) {
+	WAOpt->http = webAppBuff;  
+	char *tmp;
+	int16_t size;
+
+	size = mkHTTPHeader(WAOpt);
+	if(size < 0)
+		return -1;
+
+	tmp = WAOpt->http + size;
 
 	// Set "Content-Length: "
-	memcpy(tmp, WEBAPP_CONTENT_LEN_STR, WEBAPP_CONTENT_LEN_LEN);
-	tmp += WEBAPP_CONTENT_LEN_LEN;
+	HTTPHEADERcpy(tmp, HTTP_CONTENT_LEN);
 
 	// Set the content length and the content
-	if (WAOpt->content == WEBAPP_CONTENT_INDEX) {
-		tmp += addCL_and_html(tmp, WEBAPP_CONTENT_INDEX_CL,\
-							  WEBAPP_CONTENT_INDEX_CLL,\
-							  WEBAPP_CONTENT_INDEX_STR,\
-							  WEBAPP_CONTENT_INDEX_LEN);
+	switch(WAOpt->content) {
+	case WEBAPP_INDEX:
+		HTTPHEADERcpy(tmp, WEBAPP_INDEX_H);
+		tmp += HTTPCONTENTcpy(tmp, WEBAPP_INDEX);
+		break;
+	/*
+	case WEBAPP_TRYAGAIN:
+		HTTPHEADERcpy(tmp, WEBAPP_TRYAGAIN_H);
+		tmp += HTTPCONTENTcpy(tmp, WEBAPP_TRYAGAIN);
+		break;
+	*/
+	case WEBAPP_ALLDONE:
+		HTTPHEADERcpy(tmp, WEBAPP_ALLDONE_H);
+		tmp += HTTPCONTENTcpy(tmp, WEBAPP_ALLDONE);
+		break;
 
-	} else if (WAOpt->content == WEBAPP_CONTENT_TRYAGAIN) {
-		tmp += addCL_and_html(tmp, WEBAPP_CONTENT_TRYAGAIN_CL,\
-							  WEBAPP_CONTENT_TRYAGAIN_CLL,\
-							  WEBAPP_CONTENT_TRYAGAIN_STR,\
-							  WEBAPP_CONTENT_TRYAGAIN_LEN);
-
-	} else if (WAOpt->content == WEBAPP_CONTENT_ALLDONE) {
-		tmp += addCL_and_html(tmp, WEBAPP_CONTENT_ALLDONE_CL,\
-							  WEBAPP_CONTENT_ALLDONE_CLL,\
-							  WEBAPP_CONTENT_ALLDONE_STR,\
-							  WEBAPP_CONTENT_ALLDONE_LEN);
-
-	} else { // if (WAOpt->content == WEBAPP_CONTENT_NOT_FOUND) 
-		tmp += addCL_and_html(tmp, WEBAPP_CONTENT_NOT_FOUND_CL,\
-							  WEBAPP_CONTENT_NOT_FOUND_CLL,\
-							  WEBAPP_CONTENT_NOT_FOUND_STR,\
-							  WEBAPP_CONTENT_NOT_FOUND_LEN);
+	default: // if (WAOpt->content == WEBAPP_CONTENT_NOT_FOUND) 
+		HTTPHEADERcpy(tmp, WEBAPP_NOT_FOUND_H);
+		tmp += HTTPCONTENTcpy(tmp, WEBAPP_NOT_FOUND); 
 	}
+
 	tmp++;
 	*tmp = 0;
 	

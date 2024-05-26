@@ -19,7 +19,7 @@
 
 struct ESP8266Status esp8_status;
 static Buffer esp8;
-static char esp8_TX[512];
+static char esp8_TX[750];
 static char esp8_RX[ESP8266_BUFF_RX_LEN];
 static char ESP8266_SET_RESTART = 0; 
 ESP8266_Link_t ESP8266_link;
@@ -207,6 +207,7 @@ void esp8266_restart(void) {
 
 void esp8266_restore(void) {
 	esp8266_dma_cmd_mul_param(ESP8266_AT_RESTORE, ESP8266_AT_RESTORE_LEN, NULL, 0);	
+	ESP8266_SET_RESTART = 1;
 }
 
 void esp8266_gmr(void){
@@ -451,8 +452,6 @@ static void esp8266_http_query_Content(char *content, unsigned short len) {
 	memcpy(content, esp8.read, len);
 	memset(esp8.read, 0, len);
 	esp8.read += len;
-    if(*(content + len - 1) == 0)
-        *content = 1;
 	content += len;
 	*content = 0;
 
@@ -463,47 +462,69 @@ static void esp8266_http_query_Content(char *content, unsigned short len) {
  * 		<method> /<resource> HTTP<version>
  * 		<header>
  ********************************************************/
-static unsigned char esp8266_http_parse(char *tmp_ptr) {
+#define MAX_TICKOUT     2048    // Experimental value
+
+static unsigned char esp8266_http_parse(char *out_buff) {
 	char rest_method = ESP8266_RESTMethod_UNKNOWN; 
-    uint16_t cursor, content_length, esp8_i;
+    uint16_t cursor, content_length, esp8_i, tickout;
 
 	/* Query REST Method */
 	rest_method = esp8266_http_query_RESTMethod();
 
-	if (rest_method) {
+	if (rest_method == 0) 
+        return 1;
 	
-		/* Query Requested resource */
-		if (rest_method != ESP8266_RESTMethod_NO_METHOD)
-			cursor = esp8266_http_query_Resource(tmp_ptr);
+	/* Query Requested resource */
+	if (rest_method == ESP8266_RESTMethod_GET) {
+		cursor = esp8266_http_query_Resource(out_buff);
+        /* skip header */
+        while(*esp8.read != 0 && (tickout < MAX_TICKOUT)) {
+            esp8266_prune_buff();
+            tickout++;    
+        }
 
-		if (rest_method == ESP8266_RESTMethod_POST ||\
-			rest_method == ESP8266_RESTMethod_NO_METHOD) {
+        if(tickout == MAX_TICKOUT)
+            return 1;
 
-			/* Query Content-Length */
-			content_length = esp8266_http_query_ContentLength();
-            
-            esp8266_html_skip_header();
-            /* An approximation to know if all data from request has
-             * already arrived */
-            esp8_i = esp8.read - esp8.data;
-            esp8_i = (esp8_i + content_length) % ESP8266_BUFF_RX_LEN;
-            while(*(esp8_i + esp8.data - 1) == 0);
-
-			/* Query Content */
-			esp8266_http_query_Content(tmp_ptr + cursor, content_length);
-		} 
         esp8_status.cmd = ESP8_TCP_PULLIN;
-		// esp8_status.tcp |= TCP_BUFF_FULL;
-		return 0;
-	} 
-	return 1;
+        return 0;
+    } else if (rest_method == ESP8266_RESTMethod_POST) {
+		cursor = esp8266_http_query_Resource(out_buff);
+	}
+
+	if (rest_method == ESP8266_RESTMethod_POST ||\
+		rest_method == ESP8266_RESTMethod_NO_METHOD) {
+
+	    /* Query Content-Length */
+	    content_length = esp8266_http_query_ContentLength();
+            
+        esp8266_html_skip_header();
+        /* An approximation to know if all data from request has
+         * already arrived */
+        tickout = 0;
+        esp8_i = esp8.read - esp8.data;
+        esp8_i = (esp8_i + content_length) % ESP8266_BUFF_RX_LEN;
+
+        while((*(esp8_i + esp8.data - 1) == 0) && (tickout < MAX_TICKOUT))
+            tickout++;
+
+        if(tickout == MAX_TICKOUT)
+            return 1;
+
+        /* Query Content */
+	    esp8266_http_query_Content(out_buff + cursor, content_length);
+	}
+
+    esp8_status.cmd = ESP8_TCP_PULLIN;
+
+	return 0;
 }
 
 /*****************************************************
  * IPD format shall be:
  * 		+IPD,<link id>,<data length>:<data>
  *****************************************************/
-static unsigned short esp8266_ipd_parse(char *tmp_ptr) {
+static unsigned short esp8266_ipd_parse(char *out_buff) {
 	unsigned char link_queue;
 	unsigned short ipd_len = 0;
     char *multi_conn, link;
@@ -531,7 +552,7 @@ static unsigned short esp8266_ipd_parse(char *tmp_ptr) {
 		ESP8266_link.n_links = 0;
 	}
 
-	*tmp_ptr = ESP8266_link.open[link_queue] - 1;
+	*out_buff = ESP8266_link.open[link_queue] - 1;
 
 	/* Query  IPD data length */
 	while(*esp8.read != ':') {

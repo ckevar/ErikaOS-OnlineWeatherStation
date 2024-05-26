@@ -5,7 +5,7 @@
 #include "esp8266_driver.h"
 #include "esp8266_network.h"
 #include "esp8266_responses.h"
-#include "esp8266_powerup.h"
+#include "esp8266_settings.h"
 #include "esp8266_netstat.h"
 #include "esp8266_client.h"
 

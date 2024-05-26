@@ -1,7 +1,8 @@
 #include "esp8266_link.h"
 #include "esp8266_driver.h"
 #include "esp8266_client.h"
-#include "esp8266_powerup.h"
+#include "esp8266_settings.h"
+#include "esp8266_server.h"
 
 #include "state.h"
 
@@ -29,11 +30,11 @@ uint8_t app_http_process(enum ESP8NetManagerState supers, void (*callback)(uint8
     if (supers == ESP8SS_CLIENT)
         (*callback)(&success, tmp, arg);
     
-    //
-    //else if (supers == ESP8SS_SERVER)
-	//    app_http_from_WebApp(tmp, link_id, prev_state, curr_state, snp);
+    else if (supers == ESP8SS_SERVER) {
+        (*callback)(&success, tmp, arg);
+        if (success) success = link_id;
+    }
 
-    
     return success;
 }
 

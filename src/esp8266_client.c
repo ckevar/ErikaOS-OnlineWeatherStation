@@ -5,7 +5,7 @@
 #include "esp8266_network.h"
 #include "esp8266_client.h"
 #include "esp8266_link.h"
-#include "esp8266_powerup.h"
+#include "esp8266_settings.h"
 
 #include "WidgetConfig.h"
 

@@ -18,12 +18,14 @@ char OWAPI_get_weather(char *json, char **vals, unsigned short *vals_len) {
 
 	vals[0] = json_query_key_ValPtr(json, OWAPI_JSON_COD, OWAPI_JSON_COD_LEN);
 
-	if(memcmp(OWAPI_JSON_200, vals[0], OWAPI_JSON_200_LEN) == 0) {
-
-		json_query_mulKey_ValPtrLen(json, OWAPI_PARAMS_COUNT, JSON_KEYS,\
+	if(memcmp(OWAPI_JSON_200, vals[0], OWAPI_JSON_200_LEN))
+		return 1;
+	
+	json_query_mulKey_ValPtrLen(json, OWAPI_PARAMS_COUNT, JSON_KEYS,\
 									KEYS_LEN, vals, vals_len);
-		
-		return 0;
-	}
-	return 1;
+
+	if(*(vals[iOWAPI_FEELS_LIKE]) < '0' || *(vals[iOWAPI_FEELS_LIKE]) > '9')
+		vals[iOWAPI_FEELS_LIKE] = "0\0";
+
+	return 0;
 }

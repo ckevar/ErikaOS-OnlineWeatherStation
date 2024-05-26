@@ -228,11 +228,14 @@ void UI_writeWeatherDescription(char *weatherDescription) {
 void UI_writeWeatherFeelsLike(char *feels_like_val) {
 	char temp[3] = {0,0,0};
 	unsigned char i = 0;
-	// LCD_UsrLog("%s\r\n", feels_like_val);
+	
 	while ((*feels_like_val != '.') && (*feels_like_val != ',')) {
 		temp[i++] = *feels_like_val;
 		feels_like_val++;
 	}
+
+	if(i > 5)
+		i = 0;
 
 	WPrint(&weather_ui[FEELS_LIKE_VAL_STR], temp);
 

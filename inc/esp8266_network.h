@@ -3,10 +3,7 @@
 
 #include <stdint.h>
 
-enum ESP8Server {
-    ESP8S_SWRITE,
-    ESP8S_SREAD,
-};
+#include "net_credentials_conf.h"
 
 enum ESP8NetManagerState {
     ESP8SS_INITIAL_SETUP,
@@ -17,6 +14,7 @@ enum ESP8NetManagerState {
     ESP8SS_ON_HOLD,
     ESP8SS_ERROR,
     ESP8SS_READY,
+	ESP8SS_STATION_CREDENTIALS,
 };
 
 

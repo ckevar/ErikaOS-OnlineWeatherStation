@@ -57,13 +57,6 @@
 #define APP_FSM_SUPER_NORMAL			0
 #define APP_FSM_SUPER_SETTINGS 			1
 
-
-typedef struct SSIDnPSWD_t {
-	char ssidNpassword[128];
-	char len;
-	char link_OnHold;	
-} SSIDnPSWD_t;
-
 void app_fsm_app(void);		// runs the Finite-State Machine
 void app_fsm_restart(void);
 

@@ -12,25 +12,25 @@
 #include "esp8266_responses.h"
 
 // ESP8266 Software definitions
-#define ESP8266_NUM_LINK 		5
-#define ESP8266_BUFF_PER_LINK 	256
-#define ESP8266_BUFF_RX_LEN 	1024
-#define ESP8266_IP_LEN 			16
+#define ESP8266_NUM_LINK				5
+#define ESP8266_BUFF_PER_LINK			256
+#define ESP8266_BUFF_RX_LEN				1024
+#define ESP8266_IP_LEN					16
 
-#define ESP8266_ST_UNKNOWN_CODE 0	// ESP8266 is in Uknown state ID
+#define ESP8266_ST_UNKNOWN_CODE			0	// ESP8266 is in Uknown state ID
 
 /* ESP8266 AT commands */
-#define ESP8266_AT 				"AT"
-#define ESP8266_AT_LEN 			2
+#define ESP8266_AT						"AT"
+#define ESP8266_AT_LEN					2
 
-#define ESP8266_AT_RST 			"AT+RST"
-#define ESP8266_AT_RST_LEN 		6
+#define ESP8266_AT_RST					"AT+RST"
+#define ESP8266_AT_RST_LEN				6
 
-#define ESP8266_AT_RESTORE 		"AT+RESTORE"
-#define ESP8266_AT_RESTORE_LEN 	10
+#define ESP8266_AT_RESTORE				"AT+RESTORE"
+#define ESP8266_AT_RESTORE_LEN			10
 
-#define ESP8266_AT_GMR			"AT+GMR"
-#define ESP8266_AT_GMR_LEN		6
+#define ESP8266_AT_GMR					"AT+GMR"
+#define ESP8266_AT_GMR_LEN				6
 
 #define ESP8266_AT_UART_DEF_9600 		"AT+UART_DEF=9600,8,1,0,0"
 #define ESP8266_AT_UART_DEF_9600_LEN 	24
@@ -80,19 +80,21 @@
 #define ESP8266_CWMODE_SOFTAP 			'2'	
 #define ESP8266_CWMODE_STATION_N_SOFTAP '3'
 	
-#define ESP8266_CIPMUX_SINGLE_CON 	'0' 	// single connection mode
-#define ESP8266_CIPMUX_MULTI_CON 	'1'	// Multiple connection mode
+#define ESP8266_CIPMUX_SINGLE_CON		'0' 	// single connection mode
+#define ESP8266_CIPMUX_MULTI_CON		'1'	// Multiple connection mode
 
 /* HTTP Definitions */
-#define ESP8266_RESTMethod_UNKNOWN 	 0
-#define ESP8266_RESTMethod_GET 		 1
-#define ESP8266_RESTMethod_POST 	 2
-#define ESP8266_RESTMethod_NO_METHOD 3
+enum HTTPMethods {
+	ESP8266_RESTMethod_UNKNOWN = 0,
+	ESP8266_RESTMethod_GET,
+	ESP8266_RESTMethod_POST,
+	ESP8266_RESTMethod_NO_METHOD,
+};
 
 /* +IPD STATUS Definitions */
-#define ESP8266_IPD_DATA_UKNOWN  	0
-#define ESP8266_IPD_DATA_MISSING 	1
-#define ESP8266_IPD_DATA_OK2PARSE 	2
+#define ESP8266_IPD_DATA_UKNOWN			0
+#define ESP8266_IPD_DATA_MISSING		1
+#define ESP8266_IPD_DATA_OK2PARSE		2
 
 /* ESP8266 Types */
 typedef struct {
