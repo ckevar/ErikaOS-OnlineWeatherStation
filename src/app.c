@@ -15,10 +15,7 @@
 
 #include "WidgetConfig.h"
 
-enum AppServerState {
-	SERVER_CONF,
-	SERVER_RUNNING,
-};
+
 
 static char OWAPI_HTTP_MSG2REQ[250];
 static char OWAPI_HTTP_MSG2REQ_LEN_STR[OWAPI_GET_RESOURCE_STR_LEN+1];
@@ -192,11 +189,15 @@ static void OWAPI_process_result(uint8_t *success, char *tmp, void *arg)
 	*success = 0;
 }
 
+enum AppServerState {
+	SERVER_CONF,
+	SERVER_RUNNING,
+};
+
 void server_function(struct StateS *s) {
     static struct Socket socket;
     static SSIDnPSWD_t wifi_credentials;
 	static enum AppServerState server_state = SERVER_CONF;
-    
 
 	switch(server_state){
 	case SERVER_CONF:
