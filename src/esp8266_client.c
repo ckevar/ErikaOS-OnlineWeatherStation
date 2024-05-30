@@ -16,10 +16,11 @@
 
 uint16_t LUT_OK_client(enum ESP8Client prev_subs) {
     uint16_t LUT[ESP8_CLIENT_COUNT] = {
-        [ESP8S_CONNECT] = MKSTATE(ESP8SS_CLIENT, ESP8S_RMALLOC),
-        [ESP8S_RMALLOC] = MKSTATE(ESP8SS_ON_HOLD, 0),
-        [ESP8S_CWRITE]   = MKSTATE(ESP8SS_ON_HOLD, 0),
-        [ESP8S_CLOSE]   = MKSTATE(ESP8SS_CLIENT, ESP8S_DONE),
+		[ESP8S_CONNECT_SSL] = MKSTATE(ESP8SS_CLIENT, ESP8S_RMALLOC),
+        [ESP8S_CONNECT_TCP] = MKSTATE(ESP8SS_CLIENT, ESP8S_RMALLOC),
+        [ESP8S_RMALLOC]		= MKSTATE(ESP8SS_ON_HOLD, 0),
+        [ESP8S_CWRITE]		= MKSTATE(ESP8SS_ON_HOLD, 0),
+        [ESP8S_CLOSE]		= MKSTATE(ESP8SS_CLIENT, ESP8S_DONE),
     };
 
     if (prev_subs > ESP8_CLIENT_COUNT)
@@ -34,27 +35,35 @@ void fsm_client(struct StateS *state, struct Socket *so) {
 
     nx_state = SUBSTATE(*state->nx_state);
     switch(nx_state) {
-    case ESP8S_CONNECT:
-		esp8266_set_DNS(so->link, so->domain_port, so->dsize);
+	// case ESP8S_CONNECT:
+	case ESP8S_CONNECT_SSL:
+		esp8266_purge_link_buff();
+		esp8266_ssl(so->link, so->domain_port, so->dsize);
+		UI_clear_progress();
+		UI_WRITESTATE("Open ", 5, so->domain_port, so->dsize);
+		break;
+
+    case ESP8S_CONNECT_TCP:
+		esp8266_tcp(so->link, so->domain_port, so->dsize);
         UI_clear_progress();
-        UI_WRITESTATE("Connect to ", 11, so->domain_port, so->dsize);
+        UI_WRITESTATE("Open ", 5, so->domain_port, so->dsize);
 		break;
 
     case ESP8S_RMALLOC:
 		esp8266_set_CIPSEND_link(so->link, so->rsize, strnlen(so->rsize, 3));
-        UI_WRITESTATE("Remote malloc ", 14, so->domain_port, so->dsize); 
+        UI_WRITESTATE("Malloc ", 7, so->domain_port, so->dsize); 
         break;
 
     case ESP8S_CWRITE:
 		esp8266_req_HTML(so->request, atoi(so->rsize));
-        UI_WRITESTATE("Request ", 6, so->domain_port, so->dsize); 
+        UI_WRITESTATE("Request ", 8, so->domain_port, so->dsize); 
         break;
 
     case ESP8S_CREAD:
         if (app_http_process(ESP8SS_CLIENT, so->callback, so->arg) == 0)
             *state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
         else
-            *state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
+            *state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
 
         UI_WRITESTATE("Read ", 5, so->domain_port, so->dsize);
         UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);

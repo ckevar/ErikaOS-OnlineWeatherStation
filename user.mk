@@ -4,7 +4,8 @@ GNU_ARM_ROOT = $(HOME)/.local/gcc-arm-none-eabi-10.3-2021.10
 vpath %.c src ui/src img/src
 
 CFLAGS += -Iinc -Iui/inc -Iimg/inc
-APP_SRCS += esp8266_driver.c app.c ui.c json_parser.c ipapi_json.c openweather.c web_app.c\
+APP_SRCS += esp8266_driver.c app.c wapp.c ui.c json_parser.c ipapi_json.c openweather.c\
+			wifi_supplicant.c spotify.c\
 esp8266_settings.c esp8266_netstat.c esp8266_client.c esp8266_link.c esp8266_server.c\
 esp8266_network.c\
 Widget.c Event.c Touch.c  STMPE811QTR.c\

@@ -4,7 +4,8 @@
 #include "state.h"
 
 enum ESP8Client {
-    ESP8S_CONNECT,
+	ESP8S_CONNECT_SSL,
+    ESP8S_CONNECT_TCP,
     ESP8S_RMALLOC,  // Remote Malloc
     ESP8S_CWRITE,   // Client Write
     ESP8S_CREAD,    // Client Read

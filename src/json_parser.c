@@ -25,6 +25,7 @@ char *json_query_key_ValPtr(char *json, char *key, unsigned short key_len) {
 		}
 		json++;
 	}
+	return NULL;
 }
 
 /******************************************************************

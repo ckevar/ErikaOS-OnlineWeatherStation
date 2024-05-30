@@ -35,8 +35,8 @@
 
 #define REQ_TIME            15
 
-#define RESET_ESP8266_EVNT 	0x01
 #define SET_AP_ESP8266_EVNT 0x02
+#define SPOTIFY_CONF_EVENT	0x01
 
 // #define TIMEMODE 	0x00
 // #define TIMESETMODE 0x01

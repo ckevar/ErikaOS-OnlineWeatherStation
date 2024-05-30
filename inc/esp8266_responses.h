@@ -1,35 +1,37 @@
 #ifndef ESP8266_RESPONSES_H
 #define ESP8266_RESPONSES_H
 
-#define ESP8_OK_STR		"OK" 	// ESP8266 OK reply
-#define ESP8_OK_LEN 	2		// ESP8266 OK's length
+#include "http.h"
 
-#define ESP8_ERROR_STR	"ERROR"	// ESP8266 ERROR reply
-#define ESP8_ERROR_LEN 	5		// ESP8266 ERROR's length 
+#define ESP8_OK_STR			"OK" 	// ESP8266 OK reply
+#define ESP8_OK_LEN			2		// ESP8266 OK's length
 
-#define ESP8_FAIL_STR 	"FAIL"	// ESP8266 FAIL reply
-#define ESP8_FAIL_LEN 	4		// ESP8266 FAIL's lengh
+#define ESP8_ERROR_STR		"ERROR"	// ESP8266 ERROR reply
+#define ESP8_ERROR_LEN		5		// ESP8266 ERROR's length 
 
-#define ESP8_GOT_IP_STR	"GOT IP"	// ESP8266 WIFI GOT IP reply
-#define ESP8_GOT_IP_LEN 6		// ESP8266 WIFI GOT IP reply
+#define ESP8_FAIL_STR		"FAIL"	// ESP8266 FAIL reply
+#define ESP8_FAIL_LEN		4		// ESP8266 FAIL's lengh
 
-#define ESP8_WRAP_STR   '>'
-#define ESP8_WRAP_LEN   1
+#define ESP8_GOT_IP_STR		"GOT IP"	// ESP8266 WIFI GOT IP reply
+#define ESP8_GOT_IP_LEN		6		// ESP8266 WIFI GOT IP reply
+
+#define ESP8_WRAP_STR		'>'
+#define ESP8_WRAP_LEN		1
 
 #define ESP8_LINK_CLOSED_STR 	"CLOSED" // HTTP Closed
 #define ESP8_LINK_CLOSED_LEN   8       // HTTP Closed
 
-#define ESP8_IPData_STR	"+IPD"
-#define ESP8_IPData_LEN 4
+#define ESP8_IPData_STR		"+IPD"
+#define ESP8_IPData_LEN		4
 
-#define ESP8_READY_STR 	"ready"
-#define ESP8_READY_LEN 	5
+#define ESP8_READY_STR		"ready"
+#define ESP8_READY_LEN		5
 
-#define ESP8_IP_STR 	"+CIPSTA_CUR:ip"
-#define ESP8_IP_LEN 	14
+#define ESP8_IP_STR			"+CIPSTA:ip"
+#define ESP8_IP_LEN			10
 
-#define ESP8_STATUS_STR "STATUS:"
-#define ESP8_STATUS_LEN 7
+#define ESP8_STATUS_STR		"STATUS:"
+#define ESP8_STATUS_LEN		7
 
 enum ESP8Resp {
     ESP8_UNKNOWN,   
@@ -40,7 +42,7 @@ enum ESP8Resp {
     ESP8_WRAP, 	        // Wrap symbol
     ESP8_LINK_CLOSED,   // Link Closed
     ESP8_IPData,	    // Arriving data from link
-    ESP8_TCP_PULLIN,    // Data itself
+    ESP8_DATA_PULLIN,    // Data itself
     ESP8_READY,         // Device is ready
     ESP8_IP, 	        // Data contains IP
     ESP8_STATUS,        // WiFI connection status 
@@ -64,6 +66,7 @@ enum ESP8Tcp {
 struct ESP8266Status {
     enum ESP8Resp cmd;
     enum WiFiStatus wifi;
+	enum HTTPStatusCode http;
     unsigned char tcp;
     char link;
 };

@@ -6,6 +6,7 @@
 #include "net_credentials_conf.h"
 
 enum ESP8NetManagerState {
+	ESP8SS_POWER_UP,
     ESP8SS_INITIAL_SETUP,
     ESP8SS_NETSTATUS,
     ESP8SS_AP,
@@ -49,7 +50,7 @@ enum WifiStatus {
 
 void app_fsm_app(void);		// runs the Finite-State Machine
 void app_fsm_restart(void);
-void server_function(struct StateS *s);
+void server_function(struct StateS *s, uint8_t server_id);
 void client_function(struct StateS *s);
 
 #endif

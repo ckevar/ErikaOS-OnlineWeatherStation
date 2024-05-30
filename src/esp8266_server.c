@@ -1,12 +1,14 @@
 #include "esp8266_server.h"
 #include "esp8266_driver.h"
 #include "esp8266_link.h"
+#include "esp8266_settings.h"
+
 #include "state.h"
 #include "WidgetConfig.h"
 
 #include <string.h>
 
-#define MAX_OK_ON_SERVER    6
+#define MAX_OK_ON_SERVER    8
 
 uint16_t LUT_OK_server(enum ESP8ServerState prev_subs) {
     uint16_t LUT[MAX_OK_ON_SERVER] = {
@@ -15,6 +17,7 @@ uint16_t LUT_OK_server(enum ESP8ServerState prev_subs) {
         [ESP8S_SREAD]           = MKSTATE(ESP8SS_ON_HOLD, 0),
 		[ESP8S_RMALLOC_S]		= MKSTATE(ESP8SS_ON_HOLD, 0),
         [ESP8S_SWRITE]          = MKSTATE(ESP8SS_SERVER, ESP8S_LISTENING),
+		[ESP8S_SERVER_OFF]		= MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART),
     };
     if (prev_subs > MAX_OK_ON_SERVER)
         return MKSTATE(0,0);
@@ -27,20 +30,17 @@ void fsm_server(struct StateS *state, struct Socket *ss) {
 
     nx_state = SUBSTATE(*state->nx_state);
     switch(nx_state) {
-    // case APP_FSM_SET_AP_CIPMUX:
     case ESP8S_MULTI_CONN_AP:
 		esp8266_set_CIPMUX(ESP8266_CIPMUX_MULTI_CON);
 	    UI_WriteState("Enabling multiple connection");
 		break;
 
-	// case APP_FSM_SET_AP_SERVER:
 	case ESP8S_SERVER_ON:
-		esp8266_clean_link_buff(0);
+		esp8266_purge_link_buff();
 		esp8266_enable_HTTPServer_P80();
 		UI_WriteState("Enabling web server");
 		break;
 
-    // case APP_FSM_WEBAPP_OK_CLIENT0:
     case ESP8S_LISTENING:
 		*state->state = *state->nx_state;
 		*state->nx_state = MKSTATE(ESP8SS_ON_HOLD, 0);
@@ -49,7 +49,6 @@ void fsm_server(struct StateS *state, struct Socket *ss) {
         UI_set_progress(nx_state, ESP8_SERVER_COUNT - 1);
 		return;
 
-	// case APP_FSM_WEBAPP_OK_CLIENT1:
 	case ESP8S_SREAD:
         ss->link = app_http_process(ESP8SS_SERVER, ss->callback, (void *) ss);
         UI_WriteState("Reading");
@@ -67,7 +66,6 @@ void fsm_server(struct StateS *state, struct Socket *ss) {
         break;
     
     case ESP8S_SERVER_OFF:
-    // case APP_FSM_SHUTDOWN_WEBSERVER:
 		esp8266_disable_HTTPServer_P80();
 		UI_SettingsOff();
 		UI_WriteState("Shutting down server");

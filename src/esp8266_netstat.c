@@ -20,7 +20,8 @@ uint16_t LUT_OK_netstat(const enum ESP8NetManagerState superstate) {
         switch(superstate) {
         case ESP8SS_NETSTATUS:  // case APP_FSM_SUPER_NORMAL:
         case ESP8SS_CLIENT:
-            return MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
+            // return MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
+            return MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
 
         default:
 		    return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
@@ -77,7 +78,7 @@ void fsm_netstat(struct StateS *state) {
 
     switch(nx_state) {
     case ESP8S_IFCONFIG: // IFCONFIG
-		esp8266_get_CIPSTA_CUR();
+		esp8266_get_CIPSTA();
         UI_WriteState("Getting IP");
         UI_clear_progress();
 		UI_WiFiSettingUp();
@@ -90,7 +91,7 @@ void fsm_netstat(struct StateS *state) {
 		break;
 
 	case ESP8S_NETKILL:
-		esp8266_close_tcp(0); // 0 for Single connections CMUX = 0
+		esp8266_close_tcp(esp8_status.link); // 0 for Single connections CMUX = 0
 		UI_WriteState("Kill ports");
     }
 

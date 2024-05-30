@@ -15,7 +15,7 @@ enum ESP8ServerState {
     ESP8_SERVER_COUNT,
 };
 
-
 uint16_t LUT_OK_server(enum ESP8ServerState prev_subs);
 void fsm_server(struct StateS *state, struct Socket *ss);
+
 #endif

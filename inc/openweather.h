@@ -5,6 +5,7 @@
 #ifndef OPEN_WEATHER_H
 #define OPEN_WEATHER_H 
 
+/*** Request Parameters **/
 #define OWAPI_DNS_PORT 	        "\"api.openweathermap.org\",80"
 #define OWAPI_DNS_PORT_LEN      27
 
@@ -24,6 +25,7 @@
 #define OWAPI_GET_UNITSnKEY_LEN 	132	// length of requested resources
 #define OWAPI_GET_RESOURCE_STR_LEN 	3
 
+/*** Response Parameters ***/
 // JSON Members
 #define OWAPI_BUFFER_LENGTH     50	// numbers of parameters it's interesting
 

@@ -66,7 +66,7 @@ Text description = {
 };
 
 ButtonIcon WiFi_icon = {
-		WiFi_settingup, WiFi_connected, RESET_ESP8266_EVNT
+		WiFi_settingup, WiFi_connected, SPOTIFY_CONF_EVENT
 };
 
 ButtonIcon WiFi_AP_icon = {

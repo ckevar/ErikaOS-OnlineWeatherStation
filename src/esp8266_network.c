@@ -9,12 +9,8 @@
 #include "esp8266_client.h"
 #include "esp8266_link.h"
 #include "esp8266_server.h"
-#include "ipapi_json.h"
-#include "openweather.h"
-#include "json_parser.h"
 
-#include "app.h"
-#include "web_app.h"
+// #include "web_app.h"
 #include "WidgetConfig.h"
 
 // Temp header
@@ -23,15 +19,8 @@
 
 #define TIMEOUT_ON_WAITING                  128
 
-WebAppBuilder_t webAppOptions;
 
 static char INTERNAL_EVENT_UPDATE = 0;
-
-/*
- * After each AT command sent to the ESP8266, it replies with an OK
- * so the APP FSM is held until an 'OK' reply is given back. Sometimes 
- * other replies are considered, such as: '>', '+IPD', etc.
- */
 
 static uint16_t LUT_onOK(struct StateS *s) {
     enum ESP8NetManagerState supers;
@@ -58,6 +47,8 @@ static uint16_t LUT_onOK(struct StateS *s) {
 
 	case ESP8SS_STATION_CREDENTIALS:
 		esp8_status.wifi = WiFi_CONNECTED;
+		UI_SettingsOff();
+		UI_WiFiConnected();
 		return LUT_OK_station_credentials();
 	}
 }
@@ -103,7 +94,7 @@ static uint16_t fsm_on_waiting_state(struct StateS *s) {
 	    esp8_status.cmd = ESP8_UNKNOWN;
 	    return esp8266_fsm_prev_OnWrap(*s->state);
 
-    case ESP8_TCP_PULLIN:
+    case ESP8_DATA_PULLIN:
         return LUT_link_pullin(SUPERSTATE(*s->state));
 
     case ESP8_LINK_CLOSED:
@@ -217,12 +208,13 @@ __attribute__((weak)) void client_function(struct StateS *s)  {
 	*s->nx_state = MKSTATE(ESP8SS_READY, 0);
 }
 
-__attribute__((weak)) void server_function(struct StateS *s) {
+__attribute__((weak)) void server_function(struct StateS *s, uint8_t server_id) {
 
 	static struct Socket sock;
 	
 	/*
-	 * Read client function. Other parameters of sock are ignored or
+	 * 1. Read client function for more information. 
+	 * 2. Other parameters of sock are ignored or
 	 * used for the internal FSM.
 	 *
 	socket.callback = &foo;
@@ -237,45 +229,48 @@ __attribute__((weak)) void server_function(struct StateS *s) {
 }
 
 void app_fsm_app(void) {
-	static short nx_state = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV);
-	static short state = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV);
+	static uint16_t nx_state = MKSTATE(ESP8SS_POWER_UP, 0);
+	static uint16_t state;
     static char wifi_status = WiFi_NO_CONNECTED;
     static uint8_t timeout_waiting;
     static struct StateS nu_state;
+	static uint8_t server_id = 0;
     enum ESP8NetManagerState supers;
-    /* SSID AND PSW for ESP */
-	static SSIDnPSWD_t ssidNpswd;
-
-    nu_state.nx_state = &nx_state;
-    nu_state.state = &state;
-    nu_state.wifi_mode = &wifi_status;
-    nu_state.timeout = &timeout_waiting;
 	
-	/**** CHECK EVENTS (Screen touched?) ****/
-	// if(IsEvent(RESET_ESP8266_EVNT)) {
-	// 	nx_state = ESP8S_CHECK_DEV;
-	// 	state = ESP8S_CHECK_DEV;
-	// 	ClearEvents();
+	if (IsEvent(SPOTIFY_CONF_EVENT)) {
+		nx_state = MKSTATE(ESP8SS_SERVER, 0);
+		state = nx_state;
+		server_id = 1;
+		ClearEvents();
+	}
 
-	// } else 
 	if (IsEvent(SET_AP_ESP8266_EVNT)) {
         nx_state = MKSTATE(ESP8SS_AP, 0);
 		state =  MKSTATE(ESP8SS_AP, 0);
+		server_id = 0;
 		ClearEvents();
 	}
+	
 	if	(INTERNAL_EVENT_UPDATE &&\
 		(SUPERSTATE(state) != ESP8SS_AP) &&\
         (SUPERSTATE(state) != ESP8SS_SERVER) &&\
 		(SUPERSTATE(state) != ESP8SS_STATION_CREDENTIALS))
 	{
 		INTERNAL_EVENT_UPDATE = 0;
-        nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
-		state =  MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
+        nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
+		state =  MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
 	}
-	/****************************************/
+
     supers = SUPERSTATE(*nu_state.nx_state);
 	switch (supers) {
-      
+		case ESP8SS_POWER_UP:
+			nu_state.nx_state = &nx_state;
+			nu_state.state = &state;
+			nu_state.wifi_mode = &wifi_status;
+			nu_state.timeout = &timeout_waiting;
+			nx_state = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV);
+			state = nx_state;		
+
         case ESP8SS_INITIAL_SETUP:
             fsm_powerup(&nu_state);
             break;
@@ -298,7 +293,7 @@ void app_fsm_app(void) {
             break;
         
         case ESP8SS_SERVER:
-            server_function(&nu_state);
+            server_function(&nu_state, server_id);
             break;
 		
         case ESP8SS_ON_HOLD:
