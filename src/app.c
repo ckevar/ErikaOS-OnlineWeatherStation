@@ -346,18 +346,20 @@ void server_function(struct StateS *s, enum ServersID server_id) {
 }
 
 enum AppClientState {
-	LOCATION_ADDR,
-	LOCATION_REQUEST,
-	WEATHER_ADDR,
-	WEATHER_REQUEST,
-	SPOTIFY_TOKEN_ADDR,
-	SPOTIFY_TOKEN_REQUEST,
-	SPOTIFY_TRACK_ADDR,
-	SPOTIFY_TRACK_REQUEST,
+	CLIENT_CONF,
+	CLIENT_EXEC,
+};
+
+enum ClientIDs {
+	LOCATION,
+	WEATHER,
+	SPOTIFY_AUTH,
+	SPOTIFY_PLAYER,
 };
 
 void client_function(struct StateS *state)  {
-    static enum AppClientState client_state = LOCATION_ADDR;
+    static enum AppClientState client_state = CLIENT_CONF;
+	static enum ClientIDs client_id;
     static struct Socket sock;
 	static char tmp_resource[TMP_RESOURCE_SIZE];
 	static char tmp_resource_len[OWAPI_GET_RESOURCE_STR_LEN + 1];
@@ -366,153 +368,173 @@ void client_function(struct StateS *state)  {
 	static char spotify_rtoken[SPOTIFY_RTOKEN_SIZE];
 	int16_t size;
 
-    switch(client_state) {
-    case LOCATION_ADDR:
-        UI_LocationUnavailable();
+	switch(client_id) {
+	case LOCATION:
+		switch(client_state) {
+		case CLIENT_CONF:
+			UI_LocationUnavailable();
 		
-		tmp_ptr[iOW_STR] = tmp_resource;
-		tmp_ptr[iOW_LEN] = tmp_resource_len;
+			tmp_ptr[iOW_STR] = tmp_resource;
+			tmp_ptr[iOW_LEN] = tmp_resource_len;
 
-        sock.link = 0,
-        sock.domain_port = IPAPI_JSON_DNS_PORT,
-        sock.dsize = IPAPI_JSON_DNS_PORT_LEN,
-        sock.request = IPAPI_GET_RESOURCE,
-        sock.rsize = IPAPI_GET_RESOURCE_LEN,
-        sock.callback = &IPAPI_process_result,
-        sock.arg = (void *)tmp_ptr;
-		client_state = LOCATION_REQUEST;
+			sock.link = 0,
+			sock.domain_port = IPAPI_JSON_DNS_PORT,
+			sock.dsize = IPAPI_JSON_DNS_PORT_LEN,
+			sock.request = IPAPI_GET_RESOURCE,
+			sock.rsize = IPAPI_GET_RESOURCE_LEN,
+			sock.callback = &IPAPI_process_result,
+			sock.arg = (void *)tmp_ptr;
+			client_state = CLIENT_EXEC;
 
+		case CLIENT_EXEC:
+			fsm_client(state, &sock);
 
-	case LOCATION_REQUEST:
-        fsm_client(state, &sock);
-
-        if (SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
-            client_state = WEATHER_ADDR;
-            *state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
-			UI_LocationAvailable();
-        }
-        
-		break;
-
-    case WEATHER_ADDR:
-        sock.link = 1;
-        sock.domain_port = OWAPI_DNS_PORT;
-        sock.dsize = OWAPI_DNS_PORT_LEN;
-        sock.request = tmp_resource;
-        sock.rsize = tmp_resource_len;
-        sock.callback = &OWAPI_process_result,
-		sock.arg = NULL;
-		client_state = WEATHER_REQUEST;
-
-	case WEATHER_REQUEST:
-        fsm_client(state, &sock);
-		
-		if(SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
-			if (*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > ' ') {
-				client_state = SPOTIFY_TOKEN_ADDR;
-				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
+			if (SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
+				client_state = CLIENT_CONF;
+				client_id =	WEATHER;
+				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
+				UI_LocationAvailable();
 			}
-			else
-				client_state = LOCATION_ADDR;
-		}
-		
-		break;
-	
-	case SPOTIFY_TOKEN_ADDR:
-		size = snprintf(tmp_resource, TMP_RESOURCE_SIZE,\
-				SPOTIFY_AUTH_HEAD, spotify_code, spotify_auth_content);
-		
-		if(size < 0 || size > TMP_RESOURCE_SIZE) {
-			client_state = LOCATION_ADDR;
-			*state->nx_state = MKSTATE(ESP8SS_READY, 0);
-			break;
-		}
-
-		if(snprintf(tmp_resource_len, 4, "%d", size) < 0) {
-			client_state = LOCATION_ADDR;
-			*state->nx_state = MKSTATE(ESP8SS_READY, 0);
-			break;		
-		} 
-
-		tmp_ptr[iSPOTIFY_TOKEN] = spotify_token;
-		tmp_ptr[iSPOTIFY_RTOKEN] = spotify_rtoken;
-
-		sock.link = 0;
-		sock.domain_port = SPOTIFY_AUTH,
-		sock.dsize = SPOTIFY_AUTH_LEN,
-		sock.request = tmp_resource,
-		sock.rsize = tmp_resource_len;
-		sock.callback = &spotify_token_processor,
-		sock.arg = (void *)tmp_ptr;
-
-		client_state = SPOTIFY_TOKEN_REQUEST;
-
-	case SPOTIFY_TOKEN_REQUEST:
-		if (SUBSTATE(*state->nx_state) == ESP8S_CONNECT_TCP)
-			*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
-
-		fsm_client(state, &sock);
-
-		if(SUPERSTATE(*state->nx_state) == ESP8SS_READY && *spotify_token > ' ') {
-			client_state = SPOTIFY_TRACK_ADDR;
-			// TODO: Enable a task in 45 minutes that refreshes token
-			*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 		}
 		break;
 
-	case SPOTIFY_TRACK_ADDR:
+	case WEATHER:
+		switch(client_state) {
+		case CLIENT_CONF:
+
+			sock.link = 1;
+			sock.domain_port = OWAPI_DNS_PORT;
+			sock.dsize = OWAPI_DNS_PORT_LEN;
+			sock.request = tmp_resource;
+			sock.rsize = tmp_resource_len;
+			sock.callback = &OWAPI_process_result,
+			sock.arg = NULL;
+			client_state = CLIENT_EXEC;
+
+		case CLIENT_EXEC:
+			fsm_client(state, &sock);
 		
-		size = snprintf(tmp_resource, TMP_RESOURCE_SIZE,\
-				SPOTIFY_GET_PLAYER SPOTIFY_API_HEAD, spotify_token);
-
-		if(size < 0 || size > TMP_RESOURCE_SIZE) {
-			client_state = LOCATION_ADDR;
-			*state->nx_state = MKSTATE(ESP8SS_READY, 0);
-			break;
-		}
-		
-		if(snprintf(tmp_resource_len, 4, "%d", size) < 0) {
-			client_state = LOCATION_ADDR;
-			*state->nx_state = MKSTATE(ESP8SS_READY, 0);
-			break;
-		}
-
-		sock.link = 0,
-		sock.domain_port = SPOTIFY_API,
-		sock.dsize = SPOTIFY_API_LEN,
-		sock.request = tmp_resource,
-		sock.rsize = tmp_resource_len,
-		sock.callback = &spotify_track_processor,
-		sock.arg = NULL,
-
-		client_state = SPOTIFY_TRACK_REQUEST;
-
-	case SPOTIFY_TRACK_REQUEST:
-		if(SUBSTATE(*state->nx_state) == ESP8S_CONNECT_TCP)
-			*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
-
-		fsm_client(state, &sock);
-
-		if (SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
-			if (esp8_status.http == HTTP_401) {
-				// When the Token is expired a renewal is asked using
-				// the refreshing token.
-				spotify_code = snprintf(spotify_auth_content, SPOTIFY_AUTH_CONTENT_SIZE, \
-						SPOTIFY_REFRESH_CONTENT, spotify_rtoken);
-				
-				if (spotify_code < 0 || spotify_code > SPOTIFY_AUTH_CONTENT_SIZE) {
-					memset(spotify_auth_content, 0, SPOTIFY_AUTH_CONTENT_SIZE);
-					client_state = LOCATION_ADDR;
-					break;
+			if(SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
+				if (*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > ' ') {
+					client_id = SPOTIFY_AUTH;
+					*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
+				}
+				else {
+					client_id = LOCATION;
 				}
 
-				client_state = SPOTIFY_TOKEN_ADDR;
-				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
-				memset(spotify_rtoken, 0, SPOTIFY_RTOKEN_SIZE);
-				memset(spotify_token, 0, SPOTIFY_TOKEN_SIZE);
+				client_state = CLIENT_CONF;
 			}
 		}
+		break;
+	
+	case SPOTIFY_AUTH:
+		switch(client_state) {
+		case CLIENT_CONF:
+			size = snprintf(tmp_resource, TMP_RESOURCE_SIZE,\
+				   SPOTIFY_AUTH_HEAD, spotify_code, spotify_auth_content);
+		
+			if(size < 0 || size > TMP_RESOURCE_SIZE) {
+				client_state = CLIENT_CONF;
+				client_id = LOCATION;
+				*state->nx_state = MKSTATE(ESP8SS_READY, 0);
+				break;
+			}
 
+			if(snprintf(tmp_resource_len, 4, "%d", size) < 0) {
+				client_state = CLIENT_CONF;
+				client_id = LOCATION;
+				*state->nx_state = MKSTATE(ESP8SS_READY, 0);
+				break;		
+			} 
+
+			memset(spotify_token, 0, SPOTIFY_TOKEN_SIZE);
+			memset(spotify_rtoken, 0, SPOTIFY_RTOKEN_SIZE);
+
+			tmp_ptr[iSPOTIFY_TOKEN] = spotify_token;
+			tmp_ptr[iSPOTIFY_RTOKEN] = spotify_rtoken;
+
+			sock.link = 0;
+			sock.domain_port = SPOTIFY_AUTH_HOST,
+			sock.dsize = SPOTIFY_AUTH_LEN,
+			sock.request = tmp_resource,
+			sock.rsize = tmp_resource_len;
+			sock.callback = &spotify_token_processor,
+			sock.arg = (void *)tmp_ptr;
+
+			client_state = CLIENT_EXEC;
+
+		case CLIENT_EXEC:
+			if (SUBSTATE(*state->nx_state) == ESP8S_CONNECT_TCP)
+				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
+
+			fsm_client(state, &sock);
+
+			if(SUPERSTATE(*state->nx_state) == ESP8SS_READY && *spotify_token > ' ') {
+				client_state = CLIENT_CONF;
+				client_id = SPOTIFY_PLAYER;
+				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
+			}
+		}
+		break;
+
+	case SPOTIFY_PLAYER:
+		switch(client_state) {
+		case CLIENT_CONF:
+		
+			size = snprintf(tmp_resource, TMP_RESOURCE_SIZE,\
+					SPOTIFY_GET_PLAYER SPOTIFY_API_HEAD, spotify_token);
+
+			if(size < 0 || size > TMP_RESOURCE_SIZE) {
+				client_state = CLIENT_CONF;
+				client_id = LOCATION;
+				*state->nx_state = MKSTATE(ESP8SS_READY, 0);
+				break;
+			}
+		
+			if(snprintf(tmp_resource_len, 4, "%d", size) < 0) {
+				client_state = CLIENT_CONF;
+				client_id = LOCATION;
+				*state->nx_state = MKSTATE(ESP8SS_READY, 0);
+				break;
+			}
+
+			sock.link = 0,
+			sock.domain_port = SPOTIFY_API,
+			sock.dsize = SPOTIFY_API_LEN,
+			sock.request = tmp_resource,
+			sock.rsize = tmp_resource_len,
+			sock.callback = &spotify_track_processor,
+			sock.arg = NULL,
+
+			client_state = CLIENT_EXEC;
+
+		case CLIENT_EXEC:
+			if(SUBSTATE(*state->nx_state) == ESP8S_CONNECT_TCP)
+				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
+
+			fsm_client(state, &sock);
+
+			if (SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
+				if (esp8_status.http == HTTP_401) {
+					// When the Token is expired a renewal is asked
+					// using the refreshing token.
+					client_state = CLIENT_CONF;
+					spotify_code = snprintf(spotify_auth_content, SPOTIFY_AUTH_CONTENT_SIZE, \
+									SPOTIFY_REFRESH_CONTENT, spotify_rtoken);
+				
+					if (spotify_code < 0 || spotify_code > SPOTIFY_AUTH_CONTENT_SIZE) {
+						memset(spotify_auth_content, 0, SPOTIFY_AUTH_CONTENT_SIZE);
+						client_id = LOCATION;
+						break;
+					}
+
+					client_id = SPOTIFY_AUTH;
+					*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
+				}
+			}
+		}
+		// break;
     }   
 
 }
