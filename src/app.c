@@ -270,8 +270,13 @@ static void spotify_token_processor(uint8_t *success, char *http, void *arg) {
 		return;
 	}
 
-	memcpy(token[iSPOTIFY_TOKEN], tokens_ptr[iSPOTIFY_TOKEN] + 1, sizes[iSPOTIFY_TOKEN] - 2);
-	memcpy(token[iSPOTIFY_RTOKEN], tokens_ptr[iSPOTIFY_RTOKEN] + 1, sizes[iSPOTIFY_RTOKEN] - 2);
+	memcpy(token[iSPOTIFY_TOKEN],\
+			tokens_ptr[iSPOTIFY_TOKEN] + 1,\
+			sizes[iSPOTIFY_TOKEN] - 2);
+
+	memcpy(token[iSPOTIFY_RTOKEN],\
+			tokens_ptr[iSPOTIFY_RTOKEN] + 1,\
+			sizes[iSPOTIFY_RTOKEN] - 2);
 
 	*success = 0;
 }

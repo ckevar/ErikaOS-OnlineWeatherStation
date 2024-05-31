@@ -5,6 +5,8 @@
 #ifndef OPEN_WEATHER_H
 #define OPEN_WEATHER_H 
 
+#include "openweather_private.h"
+
 /*** Request Parameters **/
 #define OWAPI_DNS_PORT 	        "\"api.openweathermap.org\",80"
 #define OWAPI_DNS_PORT_LEN      27
@@ -19,7 +21,7 @@
 
 // UNITS, METRICS and
 #define OWAPI_GET_UNITSnKEY 	"&units=metric"\
-								"&appid=3c3d5b8f488f7c3f32b5f04165bf4bbe HTTP/1.1\r\n"\
+								"&appid=" OPENWEATHER_APP_ID " HTTP/1.1\r\n"\
 								"Host: api.openweathermap.org\r\n"\
 								"User-Agent: ERIKA RTOS/ESP8266/v1.0\r\n\r\n"
 #define OWAPI_GET_UNITSnKEY_LEN 	132	// length of requested resources
