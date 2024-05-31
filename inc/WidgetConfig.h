@@ -13,38 +13,30 @@
 #include "stm32f4_discovery_lcd.h"
 
 
-#define NUMWIDGETS 			16
+enum WidgetID{
+LOCATION_IMG,
+CITY_STR,		
+WiFi_IMG,		
+WiFi_AP_SET,		
+DESCRIPTION_STR,		
+TEMP_DEGREE_STR,	
+FEELS_STR,	
+LIKE_STR,	
+FEELS_LIKE_VAL_STR,	
+TEMP_DEGREE2_STR,	
+OW01D_IMG,	
+TEMP_SIGN_IMG,	
+TEMP_DEC_IMG,	
+TEMP_UNI_IMG,	
+STATE_DEV_STR,	
+REQ_TIME,   
+SPOTIFY_TRACK_STR,	
+NUMWIDGETS,	
+};
 
-#define LOCATION_IMG 		0
-#define CITY_STR			1
-#define WiFi_IMG 			2
-#define WiFi_AP_SET 		3
-#define DESCRIPTION_STR		4
-#define TEMP_DEGREE_STR		5
-#define FEELS_STR			6
-#define LIKE_STR			7
-#define FEELS_LIKE_VAL_STR	8
-#define TEMP_DEGREE2_STR	9
+#define SET_AP_ESP8266_EVNT			0x02
+#define SPOTIFY_CONF_EVENT			0x01
 
-#define OW01D_IMG			10
-
-#define TEMP_SIGN_IMG 		11
-#define TEMP_DEC_IMG		12
-#define TEMP_UNI_IMG		13
-#define STATE_DEV_STR 		14
-
-#define REQ_TIME            15
-
-#define SET_AP_ESP8266_EVNT 0x02
-#define SPOTIFY_CONF_EVENT	0x01
-
-// #define TIMEMODE 	0x00
-// #define TIMESETMODE 0x01
-// #define ALARMMODE 	0x02
-// #define SWATCHMODE 	0x04
-// #define PLUS 		0x10
-// #define MINUS 		0x20
-//
 // 0xb798 -> This is background color in a lazy way
 #define APP_BACKGROUND_COLOR 		0x7f12
 
@@ -75,6 +67,7 @@ void UI_writeWeatherFeelsLike(char *feels_like_val);
 void UI_setWeatherIcon(unsigned short *iconID);
 void UI_writeWeatherCurrTemp(char *curr_temp);
 void UI_setTime(char *timezone, char *time);
+void UI_set_track(char *track);
 
 void UI_SettingsOn(void);
 void UI_SettingsOff(void);

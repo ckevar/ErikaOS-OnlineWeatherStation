@@ -1,7 +1,7 @@
 #ifndef ESP8266_POWERUP_H
 #define ESP8266_POWERUP_H
 
-#include "esp8266_network.h"
+#include "network.h"
 
 enum ESP8PowerupState {
     ESP8S_RESTART,

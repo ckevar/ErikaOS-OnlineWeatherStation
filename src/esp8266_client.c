@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "esp8266_driver.h"
-#include "esp8266_network.h"
+#include "network.h"
 #include "esp8266_client.h"
 #include "esp8266_link.h"
 #include "esp8266_settings.h"

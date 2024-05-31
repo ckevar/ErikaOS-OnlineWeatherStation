@@ -73,7 +73,7 @@ enum {
 #define SPOTIFY_RTOKEN_SIZE			150
 #define SPOTIFY_AUTH_CONTENT_SIZE	430
 
-char spotify_get_token(char *http, char **tokens, uint16_t *sizes);
+char spotify_get_token(char *http, char **vals, uint16_t *sizes);
 
 	/*** API ***/
 #define SPOTIFY_API				"\"api.spotify.com\",443"
@@ -85,5 +85,15 @@ char spotify_get_token(char *http, char **tokens, uint16_t *sizes);
 								"User-Agent: ERIKA RTOS/ESP8266/v1.0\r\n"\
 								"Authorization: Bearer %s\r\n"\
 								"Content-Length: 0\r\n\r\n"
+
+enum {
+	iSPOTIFY_SONG,
+	iSPOTIFY_ARTIST,
+	SPOTIFY_TRACK_COUNT
+};
+
+char spotify_get_track(char *json, char **vals, uint16_t *sizes);
+
+
 
 #endif

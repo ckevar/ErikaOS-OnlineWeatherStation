@@ -54,7 +54,7 @@
 #include "lcd_log.h"
 
 #include "esp8266_driver.h"
-#include "esp8266_network.h"
+#include "network.h"
 #include "app.h"
 
 #include "Widget.h"
@@ -129,7 +129,7 @@ TASK(Task_ESP82266_RevResponse)
  * Task used for FSM.
  */
 TASK(Task_ESP8266_FSM) {
-	app_fsm_app();
+	network();
 }
 
 TASK(Task_Weather_Update) {

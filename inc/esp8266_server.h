@@ -1,7 +1,7 @@
 #ifndef ESP8266_SERVER_H
 #define ESP8266_SERVER_H
 
-#include "esp8266_network.h"
+#include "network.h"
 
 enum ESP8ServerState {
     ESP8S_MULTI_CONN_AP,

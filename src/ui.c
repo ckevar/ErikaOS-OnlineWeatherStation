@@ -136,7 +136,8 @@ Widget weather_ui[NUMWIDGETS] = {
 	{177, 45, 54, 54, IMAGE, (void *)&temp_dec_img},
 	{231, 45, 54, 54, IMAGE, (void *)&temp_uni_img},
 	{228, 5, 8, 8, TEXT, (void *) &state_dev},
-    {14, 251, 8, 8, TEXT, (void *) &state_dev}
+    {14, 251, 8, 8, TEXT, (void *) &state_dev},
+    {156, 56, 8, 8, TEXT, (void *) &state_dev}
 };
 
 void DrawFixWidgets(){
@@ -365,6 +366,10 @@ void UI_setTime(char *timezone, char *time) {
     strftime(buff, 10, "%I:%M%p", time_info);
 
     WPrintLog(&weather_ui[REQ_TIME], buff);
+}
+
+void UI_set_track(char *track) {
+	WPrintLog(&weather_ui[SPOTIFY_TRACK_STR], track);
 }
 /*******************************************************/
 

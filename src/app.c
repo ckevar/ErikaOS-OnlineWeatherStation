@@ -1,4 +1,4 @@
-#include "esp8266_network.h"
+#include "network.h"
 #include "esp8266_settings.h"
 #include "esp8266_server.h"
 #include "esp8266_client.h"
@@ -96,9 +96,8 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
     struct Socket *sock = (struct Socket *) arg;
     SSIDnPSWD_t *snp = (SSIDnPSWD_t *) sock->arg;
 
-	MATCH(http, WRES_INDEX) {
-		// MAIN PAGE ("index") //
-		// Clean requested resource
+	MATCH(http, WRES_INDEX) {	
+		// /index.html
 		*http = 0; 
 
 		mkHTMLx(WSUPP_INDEX, HTTP_OK);
@@ -110,8 +109,7 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 
 	} 
 	MATCH(http, WRES_FAVICON) {
-		// Icon asked from the browser //
-		// Clean requested resources
+		// /favicon
 		memset(http, '\0', WRES_FAVICON_LEN);
 
 		mkHTMLx(WSUPP_NOT_FOUND, HTTP_NOT_FOUND);
@@ -122,8 +120,7 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 		
 	}
 	MATCH(http, WRES_SETWiFi) {
-		/* Submitted SSID and password for tne new Access Point to connect to */
-		// Clean posted resources
+		// /set_wifi
 		memset(http, '\0', WRES_SETWiFi_LEN);
 		char i = WRES_SETWiFi_LEN;
 
@@ -261,8 +258,8 @@ static void OWAPI_process_result(uint8_t *success, char *tmp, void *arg) {
 }
 
 static void spotify_token_processor(uint8_t *success, char *http, void *arg) {
-	char *tokens_ptr[2];
-	uint16_t sizes[2];
+	char *tokens_ptr[SPOTIFY_TOKEN_COUNT];
+	uint16_t sizes[SPOTIFY_TOKEN_COUNT];
 	char **token = (char **)arg;
 
 	if(spotify_get_token(http, tokens_ptr, sizes)) {
@@ -282,29 +279,44 @@ static void spotify_token_processor(uint8_t *success, char *http, void *arg) {
 }
 
 static void spotify_track_processor(uint8_t *success, char *http, void *arg) {
+	char *track_ptr[2];
+	uint16_t sizes[2];
+
 	if (esp8_status.http == HTTP_204) {
 		*success = 0;
 		return;
 	}
+
+	if(spotify_get_track(http, track_ptr, sizes)) {
+		*success = 1;
+		return;
+	}
+	
+	*(track_ptr[1] + sizes[1]) = 0;
+	UI_set_track(track_ptr[1]);
+
 	*success = 0;
 }
 
+
+/******** Server Function *********/
 enum AppServerState {
 	SERVER_CONF,
 	SERVER_RUNNING,
 };
 
 enum ServersID {
-	NET_CONF,
-	SPOTIFY_CONF,
+	WIFI_SUPPLICANT,
+	SPOTIFY_CODE,
 };
 
 void server_function(struct StateS *s, enum ServersID server_id) {
     static struct Socket socket;
     static SSIDnPSWD_t wifi_credentials;
 	static enum AppServerState server_state = SERVER_CONF;
-
-	if (server_id == NET_CONF) {
+	
+	switch(server_id) {
+	case WIFI_SUPPLICANT:
 		switch(server_state) {
 		case SERVER_CONF:
 			socket.callback = &app_http_from_WebApp;
@@ -313,16 +325,20 @@ void server_function(struct StateS *s, enum ServersID server_id) {
 			esp8_status.wifi = WiFi_NO_CONNECTED;
 			break;
 		}
-
+	
+		// case SERVER_RUNNING:
 		fsm_server(s, &socket);
 
 		if (wifi_credentials.size > 0 && SUBSTATE(*s->state) == ESP8S_LISTENING)
 			fsm_station_credentials(s, &wifi_credentials);
-	}
-	else if (server_id == SPOTIFY_CONF) {
+
+		break;
+
+	case SPOTIFY_CODE:
 		switch(server_state) {
 		case SERVER_CONF:
-			spotify_code = snprintf(spotify_auth_content, SPOTIFY_AUTH_CONTENT_SIZE, \
+			spotify_code = snprintf(spotify_auth_content,\
+					SPOTIFY_AUTH_CONTENT_SIZE,\
 					SPOTIFY_AUTH_CONTENT, ESP8266_IPv4.ip);
 			
 			if (spotify_code < 0) {
@@ -336,12 +352,15 @@ void server_function(struct StateS *s, enum ServersID server_id) {
 			*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) = 0;
 			break;
 		}
-
+		
+		// case SERVER_RUNNING:
 		fsm_server(s, &socket);
 
 		if(*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > ' ' && \
 			SUBSTATE(*s->state) == ESP8S_LISTENING)
+		{
 			*s->nx_state = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART); 
+		}
 
 	}
 
@@ -349,6 +368,7 @@ void server_function(struct StateS *s, enum ServersID server_id) {
 		server_state = SERVER_CONF;
 
 }
+
 
 enum AppClientState {
 	CLIENT_CONF,
@@ -475,7 +495,8 @@ void client_function(struct StateS *state)  {
 
 			fsm_client(state, &sock);
 
-			if(SUPERSTATE(*state->nx_state) == ESP8SS_READY && *spotify_token > ' ') {
+			if(SUPERSTATE(*state->nx_state) == ESP8SS_READY && \
+				*spotify_token > ' ') {
 				client_state = CLIENT_CONF;
 				client_id = SPOTIFY_PLAYER;
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
@@ -522,14 +543,18 @@ void client_function(struct StateS *state)  {
 
 			if (SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
 				if (esp8_status.http == HTTP_401) {
+					client_state = CLIENT_CONF;
 					// When the Token is expired a renewal is asked
 					// using the refreshing token.
-					client_state = CLIENT_CONF;
-					spotify_code = snprintf(spotify_auth_content, SPOTIFY_AUTH_CONTENT_SIZE, \
+					spotify_code = snprintf(spotify_auth_content,\
+									SPOTIFY_AUTH_CONTENT_SIZE,\
 									SPOTIFY_REFRESH_CONTENT, spotify_rtoken);
 				
-					if (spotify_code < 0 || spotify_code > SPOTIFY_AUTH_CONTENT_SIZE) {
-						memset(spotify_auth_content, 0, SPOTIFY_AUTH_CONTENT_SIZE);
+					if (spotify_code < 0 ||\
+						spotify_code > SPOTIFY_AUTH_CONTENT_SIZE)
+					{
+						memset(spotify_auth_content, 0,\
+								SPOTIFY_AUTH_CONTENT_SIZE);
 						client_id = LOCATION;
 						break;
 					}
