@@ -15,7 +15,7 @@ char IPAPI_get_location_PtrLen(char *json, char **vals, unsigned short *vals_len
 														 IPAPI_JSON_LAT_LEN,\
 														 IPAPI_JSON_CITY_LEN};
 
-	vals[0] = json_query_key_ValPtr(json, IPAPI_JSON_STATUS, IPAPI_JSON_STATUS_LEN);
+	vals[0] = json_get_value_ptr(json, IPAPI_JSON_STATUS, IPAPI_JSON_STATUS_LEN);
 	if (memcmp(IPAPI_JSON_SUCCESS, vals[0], IPAPI_JSON_SUCCESS_LEN) == 0) {
 
 		json_query_mulKey_ValPtrLen(json, IPAPI_JSON_MEMBERS, IPAPI_KEYS,\

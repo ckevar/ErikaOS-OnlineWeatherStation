@@ -45,10 +45,10 @@ char spotify_get_token(char *json, char **vals, uint16_t *vals_sizes) {
 	uint16_t keys_sizes[SPOTIFY_TOKEN_COUNT] = {13, 12};
 
 
-	if(json_query_key_ValPtr(json, "error", 5) != NULL)
+	if(json_get_value_ptr(json, "error", 5) != NULL)
 		return 1;
 
-	if(json_query_key_ValPtr(json, "refresh_token", 13) == NULL) {
+	if(json_get_value_ptr(json, "refresh_token", 13) == NULL) {
 		json_query_mulKey_ValPtrLen(json, 1, keys + 1,\
 				keys_sizes + 1, vals + 1, vals_sizes + 1);
 		vals_sizes[iSPOTIFY_RTOKEN] = 0;

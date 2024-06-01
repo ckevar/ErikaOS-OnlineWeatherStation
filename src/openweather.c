@@ -16,7 +16,7 @@ char OWAPI_get_weather(char *json, char **vals, unsigned short *vals_len) {
         OWAPI_TIME_LEN, OWAPI_FEELS_LIKE_LEN, OWAPI_TEMP_LEN, OWAPI_ICON_LEN, 
         OWAPI_DESCRIPTION_LEN};
 
-	vals[0] = json_query_key_ValPtr(json, OWAPI_JSON_COD, OWAPI_JSON_COD_LEN);
+	vals[0] = json_get_value_ptr(json, OWAPI_JSON_COD, OWAPI_JSON_COD_LEN);
 
 	if(memcmp(OWAPI_JSON_200, vals[0], OWAPI_JSON_200_LEN))
 		return 1;

@@ -12,16 +12,16 @@
  * This replies back the pointer in the json buffer where the value of
  * the key is stored.
  *********************************************************************/
-char *json_query_key_ValPtr(char *json, char *key, unsigned short key_len) {
-	char key2search[key_len + 3];
-	*key2search = '"';
-	memcpy(key2search + 1, key, key_len);
-	memcpy(key2search + 1 + key_len, "\":", 2);
-
+char *json_get_value_ptr(char *json, char *key, unsigned short key_len) {
 	while (*json) {
-		if (*json == '"') {
-			if (memcmp(json, key2search, key_len + 3) == 0)
+		// Getting the Fragment of interest
+		if (*json == '"' && *(json + key_len + 2) == ':') {
+			// There's a risk that the json + key_len + 1 equals is 
+			// different than '"'
+			if (memcmp(json + 1, key, key_len) == 0)
 				return json + key_len + 3;
+			else
+				json += key_len + 2;
 		}
 		json++;
 	}
