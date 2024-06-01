@@ -392,7 +392,7 @@ static unsigned char esp8266_http_query_RESTMethod(void) {
 	*/
 	while(*esp8.read != ' ') {
 		switch(*esp8.read) {
-
+		case '0':
 		case '1':
 			no_method++;
 			if (no_method == HTTP_RESPONSE) {
@@ -494,7 +494,7 @@ static unsigned short esp8266_http_query_ContentLength(void) {
 		ch2cmp = 0;
 		while(*esp8.read != '\r') {
 			ch2cmp = ch2cmp * 10 + *esp8.read - 48;
-            esp8266_prune_buff();
+			esp8266_prune_buff();
 		}
 		ch2cmp_offset = 0;
 		return ch2cmp;
@@ -503,12 +503,53 @@ static unsigned short esp8266_http_query_ContentLength(void) {
 }
 
 static void esp8266_html_skip_header(void) {
-    uint16_t rns = 0;
-    while(rns < 4) {
+	uint16_t rns = 0;
+	uint8_t anon = 0;
+
+	while(rns < 4) {
 		rns = ((*esp8.read == '\r') || (*esp8.read == '\n')) \
-              ? rns + 1 \
-              : 0;
-        esp8266_prune_buff();
+			  ? rns + 1 \
+			  : 0;
+		esp8266_prune_buff();
+	}
+
+	anon = 1;
+	if (*esp8.read == 'E') {
+		rns = 7;
+		while(rns && anon == 1) {
+			anon = (*esp8.read == 'E') || (*esp8.read == 'R') ||
+				(*esp8.read == 'O') || (*esp8.read == '\r') ||
+				(*esp8.read == '\n') 
+				? 1
+				: 0;
+			rns--;
+			esp8266_prune_buff();
+		}
+
+		if (rns == 0 && anon == 1)
+			esp8_status.http = HTTP_522; // Connection Time-out
+
+		return;
+	}
+	if (*esp8.read == '+') {
+		rns = 5;
+		while(rns && anon == 1) {
+			anon = (*esp8.read == '+') || (*esp8.read == 'I') ||
+				(*esp8.read == 'P') || (*esp8.read == 'D') ||
+				(*esp8.read == ',') 
+				? 1
+				: 0;
+			rns--;
+			esp8266_prune_buff();
+		}
+
+		if (rns == 0 && anon == 1) {
+			esp8_status.http = HTTP_520;	// Something went wrong with header
+
+			while(*esp8.read != 0) 
+				esp8266_prune_buff();
+		}
+
 	}
 }
 
@@ -531,8 +572,17 @@ static void esp8266_http_query_Content(char *content, unsigned short len) {
 	memset(esp8.read, 0, len);
 	esp8.read += len;
 	content += len;
-	*content = 0;
 
+	rns = 0;
+	while (*esp8.read != 0 && rns < 4) {
+		rns = ((*esp8.read == '\r') || (*esp8.read == '\n')) \
+			  ? rns + 1 \
+			  : 0;
+		*content = *esp8.read;
+		esp8266_prune_buff();
+		content++;
+	}
+	*content = 0;
 }
 /*
  * http_get_code 
@@ -542,44 +592,44 @@ static void esp8266_http_query_Content(char *content, unsigned short len) {
  */
 static void http_get_code(void) {
 	switch(*esp8.read) {
-	case '1':
-		esp8_status.http = HTTP_1XX;
-		break;
-	
-	case '2':
-		esp8266_prune_N_buff(2);
-		
-		if (*esp8.read == '0')
-			esp8_status.http = HTTP_200;
+		case '1':
+			esp8_status.http = HTTP_1XX;
+			break;
 
-		else if (*esp8.read == '4')
-			esp8_status.http = HTTP_204;
-		else
+		case '2':
+			esp8266_prune_N_buff(2);
+
+			if (*esp8.read == '0')
+				esp8_status.http = HTTP_200;
+
+			else if (*esp8.read == '4')
+				esp8_status.http = HTTP_204;
+			else
+				esp8_status.http = HTTP_2XX;
+
+			esp8266_prune_buff();
+			return;
+
+		case '3':
+			esp8_status.http = HTTP_3XX;
+			break;
+
+		case '4':
+			esp8266_prune_N_buff(2);
+
+			esp8_status.http = *esp8.read == '1'\
+							   ? HTTP_401 \
+							   : HTTP_4XX;
+
+			esp8266_prune_buff();
+			return;
+
+		case '5':
 			esp8_status.http = HTTP_2XX;
-		
-		esp8266_prune_buff();
-		return;
-	
-	case '3':
-		esp8_status.http = HTTP_3XX;
-		break;
-	
-	case '4':
-		esp8266_prune_N_buff(2);
+			break;
 
-		esp8_status.http = *esp8.read == '1'\
-						   ? HTTP_401 \
-						   : HTTP_4XX;
-		
-		esp8266_prune_buff();
-		return;
-	
-	case '5':
-		esp8_status.http = HTTP_2XX;
-		break;
-
-	default:
-		esp8_status.http = HTTP_XXX;
+		default:
+			esp8_status.http = HTTP_XXX;
 	}
 
 	esp8266_prune_N_buff(3);
@@ -594,31 +644,31 @@ static void http_get_code(void) {
 
 static int16_t esp8266_http_parse(char *out_buff) {
 	char rest_method = HTTP_Method_UNKNOWN; 
-    uint16_t cursor, content_length, esp8_i, tickout;
+	uint16_t cursor, content_length, esp8_i, tickout;
 
 	/* Query REST Method */
 	rest_method = esp8266_http_query_RESTMethod();
-	
+
 	if (rest_method == 0) 
-        return -1;
-	
+		return -1;
+
 	tickout = 0;
 
 	/* Query Requested resource */
 	switch(rest_method) {
 	case HTTP_Method_GET:
 		cursor = esp8266_http_query_Resource(out_buff);
-        /* skip header */
-        while(*esp8.read != 0 && (tickout < MAX_TICKOUT)) {
-            esp8266_prune_buff();
-            tickout++;    
-        }
+		/* skip header */
+		while(*esp8.read != 0 && (tickout < MAX_TICKOUT)) {
+			esp8266_prune_buff();
+			tickout++;    
+		}
 
-        if(tickout == MAX_TICKOUT)
-            return -1;
+		if(tickout == MAX_TICKOUT)
+			return -1;
 
-        esp8_status.cmd = ESP8_DATA_PULLIN;
-        return 0;
+		esp8_status.cmd = ESP8_DATA_PULLIN;
+		return 0;
 
 	case HTTP_Method_POST:
 		cursor = esp8266_http_query_Resource(out_buff);
@@ -634,27 +684,36 @@ static int16_t esp8266_http_parse(char *out_buff) {
 			esp8_status.cmd = ESP8_DATA_PULLIN;
 			return 0;
 		}
-		
+
 		content_length = esp8266_http_query_ContentLength();
-        esp8266_html_skip_header();
+		esp8266_html_skip_header();
 
-        /* An approximation to know if all data from request has
-         * already arrived */
-        tickout = 0;
-        esp8_i = esp8.read - esp8.data;
-        esp8_i = (esp8_i + content_length) % ESP8266_BUFF_RX_LEN;
-		
-        while((*(esp8_i + esp8.data - 1) == 0) && (tickout < MAX_TICKOUT))
-            tickout++;
+		if (content_length > ESP8266_NUM_LINK * ESP8266_BUFF_PER_LINK) {
+			esp8_status.http = HTTP_2XX;
+		}
 
-        if(tickout == MAX_TICKOUT)
-            return content_length;
+		if (esp8_status.http != HTTP_200) {
+			esp8_status.cmd = ESP8_DATA_PULLIN;
+			return 0;
+		}
 
-        /* Query Content */
-	    esp8266_http_query_Content(out_buff + cursor, content_length);
+		/* An approximation to know if all data from request has
+		 * already arrived */
+		tickout = 0;
+		esp8_i = esp8.read - esp8.data;
+		esp8_i = (esp8_i + content_length) % ESP8266_BUFF_RX_LEN;
+
+		while((*(esp8_i + esp8.data - 1) == 0) && (tickout < MAX_TICKOUT))
+			tickout++;
+
+		if(tickout == MAX_TICKOUT)
+			return content_length;
+
+		/* Query Content */
+		esp8266_http_query_Content(out_buff + cursor, content_length);
 	}
 
-    esp8_status.cmd = ESP8_DATA_PULLIN;
+	esp8_status.cmd = ESP8_DATA_PULLIN;
 
 	return 0;
 }
@@ -792,8 +851,14 @@ void esp8266_response(void) {
 	static unsigned char ESP8266_IPData_STATUS = ESP8266_IPData_UKNOWN;
 	static char *buff_link;
 	static int16_t content_length;
-    
-	if (ESP8266_IPData_STATUS == ESP8266_IPData_OK2PARSE) {
+	uint16_t ipd_len;
+	
+	if (ESP8266_IPData_STATUS == ESP8266_IPData_WAIT2PARSE) {
+		// Just buying some time, when data is too large
+		ESP8266_IPData_STATUS = ESP8266_IPData_OK2PARSE;
+		return;
+	}
+	else if (ESP8266_IPData_STATUS == ESP8266_IPData_OK2PARSE) {
 		content_length = esp8266_http_parse(buff_link);
 		
 		if (content_length == 0)
@@ -889,11 +954,16 @@ void esp8266_response(void) {
             if (MATCH(ESP8_IPData)) {
                 RESET_MATCH();
                 esp8_status.cmd = ESP8_UNKNOWN;
-                if (esp8266_ipd_parse(buff_link)) {
+				ipd_len = esp8266_ipd_parse(buff_link);
+                if (ipd_len > 0 && ipd_len <= 1000) {
                     buff_link = ESP8266_link.buffXlink[*buff_link];
                     ESP8266_IPData_STATUS = ESP8266_IPData_OK2PARSE;
                     return;
-                }
+                } else if (ipd_len > 1000) {
+                    buff_link = ESP8266_link.buffXlink[*buff_link];
+					ESP8266_IPData_STATUS = ESP8266_IPData_WAIT2PARSE;
+					return;
+				}
 
             }
             break;

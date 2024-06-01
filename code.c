@@ -223,10 +223,20 @@ int main(void)
 	SetRelAlarm(Alarm_ESP82266_RevResponse, 1, 40);
 	SetRelAlarm(Alarm_ESP8266_FSM, 15, 80);
 	// SetRelAlarm(Alarm_Weather_Update, 180000, 180000);
-	SetRelAlarm(Alarm_Weather_Update, 45000, 45000);
+	SetRelAlarm(Alarm_Weather_Update, 45000, 20000);
 
 	for (;;) {
 	}
 
 }
 
+/*
+48
+01 07
+
+33
+5.17 - 5.29
+0.30 - 
+1.A
+15
+*/

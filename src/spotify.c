@@ -48,31 +48,30 @@ char spotify_get_token(char *json, char **vals, uint16_t *vals_sizes) {
 	if(json_query_key_ValPtr(json, "error", 5) != NULL)
 		return 1;
 
-	json_query_mulKey_ValPtrLen(json, SPOTIFY_TOKEN_COUNT,\
-			keys, keys_sizes, vals, vals_sizes);
-	
+	if(json_query_key_ValPtr(json, "refresh_token", 13) == NULL) {
+		json_query_mulKey_ValPtrLen(json, 1, keys + 1,\
+				keys_sizes + 1, vals + 1, vals_sizes + 1);
+		vals_sizes[iSPOTIFY_RTOKEN] = 0;
+	} else {
+		json_query_mulKey_ValPtrLen(json, 2, keys,\
+				keys_sizes, vals, vals_sizes);
+	}
+
 	if(vals_sizes[iSPOTIFY_TOKEN] == 0)
 		return 1;
 	
-	if(vals_sizes[iSPOTIFY_RTOKEN] == 0)
-		return 1;
-
 	return 0;
 
 }
 
 char spotify_get_track(char *json, char **vals, uint16_t *vals_sizes) {
-	char *keys[SPOTIFY_TRACK_COUNT] = {"name", "name"};
-	uint16_t keys_sizes[SPOTIFY_TRACK_COUNT] = {4, 4};
+	char *keys[SPOTIFY_TRACK_COUNT] = {"name",  "name", "name", "name"};
+	uint16_t keys_sizes[SPOTIFY_TRACK_COUNT] = {4, 4, 4, 4};
 
-	json_query_mulKey_ValPtrLen(json, SPOTIFY_TRACK_COUNT,\
-			keys, keys_sizes, vals, vals_sizes);
-
-	if(vals_sizes[iSPOTIFY_SONG] == 0)
+	if(json_query_mulKey_ValPtrLen(json, SPOTIFY_TRACK_COUNT,\
+			keys, keys_sizes, vals, vals_sizes) > 0) {
 		return 1;
-
-	if(vals_sizes[iSPOTIFY_ARTIST] == 0)
-		return 1;
-
+	}
+	
 	return 0;
 }

@@ -79,15 +79,16 @@ char spotify_get_token(char *http, char **vals, uint16_t *sizes);
 #define SPOTIFY_API				"\"api.spotify.com\",443"
 #define SPOTIFY_API_LEN			21
 
-#define SPOTIFY_GET_PLAYER		"GET /v1/me/player/currently-playing "
+#define SPOTIFY_GET_PLAYER		"GET /v1/me/player/currently-playing?market=IT "
 #define SPOTIFY_API_HEAD		"HTTP/1.1\r\n"\
 								"Host: api.spotify.com\r\n"\
 								"User-Agent: ERIKA RTOS/ESP8266/v1.0\r\n"\
-								"Authorization: Bearer %s\r\n"\
-								"Content-Length: 0\r\n\r\n"
+								"Authorization: Bearer %s\r\n\r\n"
 
 enum {
 	iSPOTIFY_SONG,
+	iSPOTIFY_ALBUM,
+	iSPOTIFY_X0,
 	iSPOTIFY_ARTIST,
 	SPOTIFY_TRACK_COUNT
 };

@@ -22,6 +22,8 @@ enum HTTPStatusCode {
 	HTTP_4XX,
 	HTTP_401,
 	HTTP_5XX,
+	HTTP_520,
+	HTTP_522,
 };
 
 #endif

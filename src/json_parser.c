@@ -32,10 +32,13 @@ char *json_query_key_ValPtr(char *json, char *key, unsigned short key_len) {
  * It looks up many key at one pass across json.
  * In the array, the keys shall be in INVERTED order of appearance.
  * It replies back where the values of the keys in vals
+ * it returns the number of missing fields
  ******************************************************************/
 unsigned char json_query_mulKey_ValPtrLen(char *json, char n, char **key,\
 										  unsigned short *key_len, char **val,\
 										  unsigned short *val_len) {
+	char *_json = json;
+
 	while (*json) {
 		if ((*json == '"') && (*(json + key_len[n - 1] + 1) == '"')) {
 			json++;	// skip '"'
@@ -51,6 +54,9 @@ unsigned char json_query_mulKey_ValPtrLen(char *json, char n, char **key,\
 			}
 		}
 		json++;
+		if(json - _json > 6000) {
+			return n;
+		}
 	}
 	return n;
 }

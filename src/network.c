@@ -20,8 +20,6 @@
 #define TIMEOUT_ON_WAITING                  128
 
 
-static char INTERNAL_EVENT_UPDATE = 0;
-
 static uint16_t LUT_onOK(struct StateS *s) {
     enum ESP8NetManagerState supers;
     supers = SUPERSTATE(*s->state);
@@ -54,13 +52,7 @@ static uint16_t LUT_onOK(struct StateS *s) {
 }
 
 
-/*
- * This is called by a another Tasks that will restart the APP FSM to 
- * update the weather info.
- */
-void app_fsm_restart(void) {
-	INTERNAL_EVENT_UPDATE = 1;
-}
+
 
 static uint16_t fsm_on_http_close(uint16_t *prev_state, char *wifi) {
     enum ESP8NetManagerState supers = SUPERSTATE(*prev_state);
@@ -156,6 +148,9 @@ static short fsm_on_timeout(unsigned short prev_state) {
         return LUT_timeout_powerup(SUBSTATE(prev_state));
 
     case ESP8SS_CLIENT:
+		if (esp8_status.http == HTTP_200)
+			return MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
+
         return MKSTATE(ESP8SS_NETSTATUS, ESP8S_CHECK_DEV);
     
     case ESP8SS_SERVER:
@@ -228,7 +223,7 @@ __attribute__((weak)) void server_function(struct StateS *s, uint8_t server_id) 
 	*s->nx_state = MKSTATE(ESP8SS_READY, 0);
 }
 
-__attribute__((weak)) void eventHandler(struct StateS *s, \
+__attribute__((weak)) void NetEventHandler(struct StateS *s, \
 		uint8_t *server_id, uint8_t *client_id) 
 {
 
@@ -244,8 +239,8 @@ void network(void) {
 	static uint8_t client_id = 0;
     enum ESP8NetManagerState supers;
 
-	eventHandler(&nu_state, &server_id, &client_id);
-	
+	NetEventHandler(&nu_state, &server_id, &client_id);
+	/*
 	if (IsEvent(SPOTIFY_CONF_EVENT)) {
 		nx_state = MKSTATE(ESP8SS_SERVER, 0);
 		state = nx_state;
@@ -269,7 +264,7 @@ void network(void) {
         nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
 		state =  MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
 	}
-
+	*/
     supers = SUPERSTATE(*nu_state.nx_state);
 	switch (supers) {
 		case ESP8SS_POWER_UP:

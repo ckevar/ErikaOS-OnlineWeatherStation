@@ -13,8 +13,8 @@
 
 // ESP8266 Software definitions
 #define ESP8266_NUM_LINK				5
-#define ESP8266_BUFF_PER_LINK			1024
-#define ESP8266_BUFF_RX_LEN				6144
+#define ESP8266_BUFF_PER_LINK			1840
+#define ESP8266_BUFF_RX_LEN				9216
 #define ESP8266_IP_LEN					16
 
 #define ESP8266_ST_UNKNOWN_CODE			0	// ESP8266 is in Uknown state ID
@@ -118,6 +118,7 @@
 #define ESP8266_IPData_UKNOWN			0
 #define ESP8266_IPData_WAIT				1
 #define ESP8266_IPData_OK2PARSE			2
+#define ESP8266_IPData_WAIT2PARSE		3
 
 /* ESP8266 Types */
 typedef struct {
