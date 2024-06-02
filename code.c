@@ -61,7 +61,7 @@
 #include "WidgetConfig.h"
 #include "Touch.h"
 #include "STMPE811QTR.h"
-#include "task_conf.h"
+#include "erika_task_conf.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -180,7 +180,7 @@ int main(void)
 	EE_systick_enable_int();
 	EE_systick_start();
 
-	ui_init();
+	// ui_init();
 	STM_EVAL_LEDInit(LED4);
 	esp8266_init();
 
