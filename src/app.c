@@ -161,7 +161,7 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 
 			MATCH(http + i, WSUPP_PSWD) {
 				i += WSUPP_PSWD_LEN;
-				while(http[i]) {
+				while(http[i] != '\r') {
 					snp->ssidNpassword[snp->size] = http[i];
 					i++;
 					snp->size++;
@@ -303,11 +303,8 @@ static void spotify_track_processor(uint8_t *success, char *http, void *arg) {
 		return;
 	}
 	
-	*(track_ptr[iSPOTIFY_SONG] + sizes[iSPOTIFY_SONG] - 1) = 0;
-	track_ptr[iSPOTIFY_SONG] += 3;
-
-	*(track_ptr[iSPOTIFY_ARTIST] + sizes[iSPOTIFY_ARTIST] - 1) = 0;
-	track_ptr[iSPOTIFY_ARTIST] += 3;
+	*(track_ptr[iSPOTIFY_SONG] + sizes[iSPOTIFY_SONG]) = 0;
+	*(track_ptr[iSPOTIFY_ARTIST] + sizes[iSPOTIFY_ARTIST]) = 0;
 
 	sizes[iSPOTIFY_SONG] = snprintf(track_info, TRACK_INFO_SIZE, "%s:%s",\
 			track_ptr[iSPOTIFY_ARTIST], track_ptr[iSPOTIFY_SONG]);
@@ -500,7 +497,8 @@ void client_function(struct StateS *state)  {
 			} 
 
 			memset(spotify_token, 0, SPOTIFY_TOKEN_SIZE);
-			memset(spotify_rtoken, 0, SPOTIFY_RTOKEN_SIZE);
+			if(*spotify_rtoken > ' ')
+				memset(spotify_rtoken, 0, SPOTIFY_RTOKEN_SIZE);
 
 			tmp_ptr[iSPOTIFY_TOKEN] = spotify_token;
 			tmp_ptr[iSPOTIFY_RTOKEN] = spotify_rtoken;
@@ -580,7 +578,7 @@ void client_function(struct StateS *state)  {
 
 			fsm_client(state, &sock);
 
-			if (SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
+			//if (SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
 				if (esp8_status.http == HTTP_401) {
 					client_state = CLIENT_CONF;
 					// When the Token is expired a renewal is asked
@@ -601,7 +599,7 @@ void client_function(struct StateS *state)  {
 					client_id = SPOTIFY_AUTH;
 					*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 				}
-			}
+			//}
 		}
 		// break;
     }   

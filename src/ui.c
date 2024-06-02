@@ -45,6 +45,8 @@
 #include "settings_off.h"
 #include "settings_on.h"
 
+#include "spotify_off.h"
+
 // tmp header
 #include "lcd_log.h"
 
@@ -66,16 +68,16 @@ Text description = {
 };
 
 ButtonIcon WiFi_icon = {
-		WiFi_settingup, WiFi_connected, SPOTIFY_CONF_EVENT
+	WiFi_settingup, WiFi_connected, 0
 };
 
 ButtonIcon WiFi_AP_icon = {
-		settings_on, settings_off, SET_AP_ESP8266_EVNT
+	settings_on, settings_off, SET_AP_ESP8266_EVNT
 };
 
-// Image WiFi_AP_icon = {
-// 	.image = (unsigned char *) settings_off
-// };
+ButtonIcon spotify_icon = {
+	NULL, spotify_off, SPOTIFY_CONF_EVENT
+};
 
 Text temp_val = {
 	&Font16x24, Black
@@ -85,12 +87,7 @@ Text temp_degree = {
 	&Font16x24, Black
 };
 
-
-Text feels = {
-	&Font12x12, Black
-};
-
-Text like = {
+Text feels_like_txt = {
 	&Font12x12, Black
 };
 
@@ -106,7 +103,6 @@ Image temp_sign = {
 	.image = 0
 };
 
-
 Image temp_dec_img = {
 	.image = (unsigned char *)zero
 };
@@ -119,43 +115,53 @@ Text state_dev = {
 	&Font8x8, Black
 };
 
+#define LEFT_ALIGN_X		13	
+#define TEMP_ON_Y			45
+#define BUTTON_ON_Y			183
+#define TEMP_FEELS_LIKE_Y	127
+
 Widget weather_ui[NUMWIDGETS] = {
 	// Pos Y, pos X, dim x, dim y, type, pointer of the text
-	{12, 13, 20, 20, IMAGE, (void *)&location_icon},
+	{12, LEFT_ALIGN_X, 20, 20, IMAGE, (void *)&location_icon},
 	{13, 40, 24, 24, TEXT, (void *)&city},
-	{52, 183, 42, 30, BUTTONICON, (void *)&WiFi_icon},
-	{145, 183, 30, 30, BUTTONICON, (void *)&WiFi_AP_icon},
-	{143, 13, 8, 8, TEXT, (void *)&description},
+	{35, BUTTON_ON_Y, 42, 30, BUTTONICON, (void *)&WiFi_icon},
+	{118, BUTTON_ON_Y, 30, 30, BUTTONICON, (void *)&WiFi_AP_icon},
+	{192, BUTTON_ON_Y, 30, 30, BUTTONICON, (void *)&spotify_icon},
+	{143, LEFT_ALIGN_X, 8, 8, TEXT, (void *)&description},
 	{79, 285, 24, 24, TEXT, (void *)&temp_degree},
-	{115, 141, 12, 12, TEXT, (void *)&feels},
-	{127, 141, 12, 12, TEXT, (void *)&like},
-	{124, 220, 12, 12, TEXT, (void *)&feels_like_tmp},
-	{124, 285, 24, 24, TEXT, (void *)&temp_val},
+	{115, 141, 12, 12, TEXT, (void *)&feels_like_txt},
+	{TEMP_FEELS_LIKE_Y, 141, 12, 12, TEXT, (void *)&feels_like_txt},
+	{TEMP_FEELS_LIKE_Y - 9, 220, 24, 24, TEXT, (void *)&feels_like_tmp},
+	{TEMP_FEELS_LIKE_Y - 9, 285, 24, 24, TEXT, (void *)&temp_val},
 	{19, 32, 100, 100, IMAGE, (void *)&OW_description_img},
-	{123, 45, 54, 54, IMAGE, (void *)&temp_sign}, 
-	{177, 45, 54, 54, IMAGE, (void *)&temp_dec_img},
-	{231, 45, 54, 54, IMAGE, (void *)&temp_uni_img},
+	{123, TEMP_ON_Y, 54, 54, IMAGE, (void *)&temp_sign}, 
+	{177, TEMP_ON_Y, 54, 54, IMAGE, (void *)&temp_dec_img},
+	{231, TEMP_ON_Y, 54, 54, IMAGE, (void *)&temp_uni_img},
 	{228, 5, 8, 8, TEXT, (void *) &state_dev},
     {14, 251, 8, 8, TEXT, (void *) &state_dev},
-    {157, 13, 8, 8, TEXT, (void *) &state_dev}
+    {157, LEFT_ALIGN_X, 8, 8, TEXT, (void *) &state_dev}
 };
 
-void DrawFixWidgets(){
+void DrawFixWidgets() {
 	WPrint(&weather_ui[TEMP_DEGREE_STR], "C");	
 	WPrint(&weather_ui[FEELS_STR], "feels");	
 	WPrint(&weather_ui[LIKE_STR], " like");	
 	WPrint(&weather_ui[TEMP_DEGREE2_STR], "C");	
+	WPrintLog(&weather_ui[SPOTIFY_STATUS], "Spotify Non Connected");
 
-    LCD_SetColors(0x3b2d, 0x3b2d);
-    LCD_DrawFullRect(36, 172, 248, 51);
+    /* Buton Bar */
+	LCD_SetColors(0x3b2d, 0x3b2d);
+    LCD_DrawFullRect(19, 172, 288, 51);
     LCD_SetColors(0x03dd, 0x03d2d);
-    LCD_DrawFullRect(36, 223, 248, 1);
+    LCD_DrawFullRect(19, 223, 288, 1);
     LCD_SetColors(0x0E2d, 0x0E2d);
-    LCD_DrawFullRect(36, 224, 248, 1);
-
+    LCD_DrawFullRect(19, 224, 288, 1);
     LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
+	/*************/
 
-    DrawOff(&weather_ui[3]);
+
+    DrawOff(&weather_ui[WiFi_AP_SET]);
+	DrawOff(&weather_ui[SPOTIFY]);
 }
 
 /**************** PROGRESS BAR FUNCTIONS ***************/
@@ -368,22 +374,19 @@ void UI_setTime(char *timezone, char *time) {
     WPrintLog(&weather_ui[REQ_TIME], buff);
 }
 
-void UI_set_track(char *track) {
-    //{157, 13, 8, 8, TEXT, (void *) &state_dev}
+void UI_set_track(char *msg) {
 	LCD_DrawFullRect(13, 157, 300, 8);
-	WPrintLog(&weather_ui[SPOTIFY_TRACK_STR], track);
+	WPrintLog(&weather_ui[SPOTIFY_STATUS], msg);
 }
 /*******************************************************/
 
 
 /**************** SETTINGS AP FUNCTIONS ****************/
 void UI_SettingsOn(void) {
-	// biconinfo(&weather_ui[WiFi_AP_SET])->iconr = (unsigned char *)settings_on;
 	DrawOn(&weather_ui[WiFi_AP_SET]);
 }
 
 void UI_SettingsOff(void) { 
-	// biconinfo(&weather_ui[WiFi_AP_SET])->iconr = (unsigned char *)settings_off;
 	DrawOff(&weather_ui[WiFi_AP_SET]);
 }
 /*******************************************************/
@@ -392,6 +395,7 @@ void UI_WriteState(char *str){
 	LCD_DrawFullRect(5, 228, 300, 8);
 	WPrintLog(&weather_ui[STATE_DEV_STR], str);	
 }
+
 /*
  * #bash to conver number file into the desired sizes
  * 	convert p-replace-color.php.png -crop 54x54+200+212 one.png

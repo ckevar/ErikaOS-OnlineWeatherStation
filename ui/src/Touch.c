@@ -138,34 +138,33 @@ unsigned char  Lcd_Touch_Calibration()
  * author: C. Alvarado
  *
  * { */
-#define ALPHA_Y     0.2
-#define ALPHA_X     0.03
-#define ALPHA10_X   11.995  // alpha1 - alpha0
-#define ALPHA1_X    0.005 
-#define SIGMA_X     200.0
+#define ALPHA10_X   40.0 // alpha1 - alpha0
+#define ALPHA1_X    0.001
+#define SIGMA_X     750.0
+#define DELTA_T		0.02
 
-void state_update_extended(int *x, int *y, uint8_t *trigger) {
-    static int16_t x_estimated = 0;
-    static int16_t y_estimated = 0;
+static void state_update_extended(int *x, uint8_t *trigger) {
+    volatile static int16_t x_estimated = 160;
     static float t = 0.0;
     float alpha_x;
-    
-    t = (*trigger & 1 == 0) ? 0.0 : t + 0.05;
-    *trigger = (*trigger << 1) | 1;
+	
+	if (*trigger) { 
+		t = t + DELTA_T;
+	} else {
+		t = 0.0;
+		x_estimated = 160;
+	}
+
+    *trigger = 1;
 
     alpha_x = ALPHA1_X + ALPHA10_X / (SIGMA_X * t + 1.0);
-
     x_estimated = x_estimated + alpha_x * (*x - x_estimated);
-    y_estimated = y_estimated + ALPHA_Y * (*y - y_estimated);
-    
     *x = x_estimated;
-    *y = y_estimated;
 }
 
 /* } */
 
 unsigned char  GetTouch_TC_Async(int *xs, int *ys) {
-     /* Filter Params */
     static uint8_t trigger = 0;
 	TS_STATE *pstate = NULL;
 
@@ -177,15 +176,17 @@ unsigned char  GetTouch_TC_Async(int *xs, int *ys) {
 	    *ys = IOE_TS_Read_Y();
 
         /* State Update Filtering */
-        state_update_extended(xs, ys, &trigger);
+        state_update_extended(xs, &trigger);
 
         if ((*xs > TOUCH_AD_VALUE_MAX)
 	        || (*xs < TOUCH_AD_VALUE_MIN)
 	        || (*ys > TOUCH_AD_VALUE_MAX)
-	        || (*ys < TOUCH_AD_VALUE_MIN))
+	        || (*ys < TOUCH_AD_VALUE_MIN)) 
+		{
 	    	return 0;
-	    else
-	    	return 1;
+		}
+
+	    return 1;
     }
 
     trigger = 0;
@@ -219,7 +220,6 @@ unsigned char  GetTouch_SC_Async(unsigned int *xs, unsigned int *ys)
 {
 	int tpx, tpy;
 	TS_STATE *pstate = NULL;
-	char str[30];
 
 	if (GetTouch_TC_Async(&tpx, &tpy)) {
 	    tpx = tpx * tcs.xScale - tcs.xOffset;

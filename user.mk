@@ -12,4 +12,5 @@ OW01d.c OW02d.c OW03d.c OW04d.c OW09d.c OW10d.c OW11d.c OW12d.c OW13d.c OW50d.c\
 zero.c one.c two.c three.c four.c five.c six.c seven.c eight.c nine.c\
 location.c no_location.c \
 WiFi_no.c WiFi_settingup.c WiFi_connected.c\
-settings_on.c settings_off.c
+settings_on.c settings_off.c\
+spotify_off.c

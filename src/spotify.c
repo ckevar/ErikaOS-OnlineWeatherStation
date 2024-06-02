@@ -64,14 +64,53 @@ char spotify_get_token(char *json, char **vals, uint16_t *vals_sizes) {
 
 }
 
+#define JSON_get_panic(dest, src, key, key_len)	\
+	dest = json_get_value_ptr(src, key, key_len); \
+	if (dest == NULL)\
+		return 1
+
 char spotify_get_track(char *json, char **vals, uint16_t *vals_sizes) {
 	char *keys[SPOTIFY_TRACK_COUNT] = {"name",  "name", "name", "name"};
 	uint16_t keys_sizes[SPOTIFY_TRACK_COUNT] = {4, 4, 4, 4};
+	char *dest;
+	
+	vals[iSPOTIFY_ARTIST] = "Null";
+	vals[iSPOTIFY_SONG] = "Null";
+	vals_sizes[iSPOTIFY_ARTIST] = 4;
+	vals_sizes[iSPOTIFY_SONG] = 4;
 
+	/* Artist */
+	JSON_get_panic(dest, json, "artists", 7);
+	JSON_get_panic(dest, dest, "name", 4);
+	
+	dest += 3;
+	vals[iSPOTIFY_ARTIST] = dest;
+	while(*dest != '"') 
+		dest++;
+
+	vals_sizes[iSPOTIFY_ARTIST] = dest - vals[iSPOTIFY_ARTIST];
+
+	/* Track */
+	do {
+		JSON_get_panic(vals[iSPOTIFY_SONG], dest, "name", 4);
+		JSON_get_panic(dest, vals[iSPOTIFY_SONG], "type", 4);
+	} while(memcmp(dest, ": \"track\",", 10));
+	
+
+	dest = vals[iSPOTIFY_SONG];
+	dest += 3;
+	vals[iSPOTIFY_SONG] = dest;
+	while(*dest != '"')
+		dest++;
+
+	vals_sizes[iSPOTIFY_SONG] = dest - vals[iSPOTIFY_SONG];
+	
+	/*
 	if(json_query_mulKey_ValPtrLen(json, SPOTIFY_TRACK_COUNT,\
 			keys, keys_sizes, vals, vals_sizes) > 0) {
 		return 1;
 	}
+	*/
 	
 	return 0;
 }

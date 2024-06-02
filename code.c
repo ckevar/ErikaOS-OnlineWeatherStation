@@ -61,53 +61,45 @@
 #include "WidgetConfig.h"
 #include "Touch.h"
 #include "STMPE811QTR.h"
+#include "task_conf.h"
 
 #include <stdio.h>
 #include <string.h>
 
 
-// ESP8266_BUFF_t ESP8266_Buff;
-
 /*
  * SysTick ISR2
  */
+
 ISR2(systick_handler)
 {
 	/* count the interrupts, waking up expired alarms */
 	CounterTick(myCounter);
 }
 
-uint32_t xarray[512];
-uint32_t yarray[512];
-
-TASK(TaskLCDTouch) {
+TASK(LCD_IN) {
     static unsigned int px, py;
-    static uint8_t pv_sw = 0;
-    uint8_t sw = 0;
+    static uint32_t burst = 0;
 	TPoint p;
-    static uint16_t i = 0;
-
+	
 	if(GetTouch_SC_Async(&px, &py)) {
-        sw = 1;
-        xarray[i] = px;
-        yarray[i] = py;
-        i = i + 1;
-        if (i == 512) {
-            i = 0;
-            memset(xarray, 0, 512);
-            memset(yarray, 0, 512);
-        }
+		burst |= 1; 
+
+		/* Draw touches */
+		LCD_SetColors(0xf800, 0xf800);
+		LCD_DrawFullRect(px, py, 1, 1);
+		LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
+		
     }
 
-    if (pv_sw > sw) {
+    if ((burst & 3) == 2) {
         p.x = px;
         p.y = py;
 		OnTouch(weather_ui, &p);
-        memset(xarray, 0, 512);
-        memset(yarray, 0, 512);
+		burst = 0;
     }
-        
-    pv_sw = sw;
+
+	burst <<= 1;
 }
 /**
  * This search for specific words in the message received, but it looks
@@ -115,9 +107,7 @@ TASK(TaskLCDTouch) {
  * no more chars, and everytime this task is executed, the RX_READ starts
  *.where the last search ended in the buffer.
  */
-TASK(Task_ESP82266_RevResponse)
-{
-	// LCD_UsrLog("%s", ESP8266_Buff.RX_READ);
+TASK(ESP8266_POLL) {
 	if (esp8_status.cmd == ESP8_UNKNOWN) {
 		esp8266_response();
 	}
@@ -128,11 +118,11 @@ TASK(Task_ESP82266_RevResponse)
 /**
  * Task used for FSM.
  */
-TASK(Task_ESP8266_FSM) {
+TASK(NETWORK) {
 	network();
 }
 
-TASK(Task_Weather_Update) {
+TASK(WEATHER_UPDATE) {
 	app_fsm_restart();
 }
 
@@ -190,53 +180,32 @@ int main(void)
 	EE_systick_enable_int();
 	EE_systick_start();
 
+	ui_init();
 	STM_EVAL_LEDInit(LED4);
-
-	/* ESP8266 init */
-	esp8266_init(); 	// Loads the buffer into the driver
-									// module. 
+	esp8266_init();
 
 	/* Init Touchscreen */
 	IOE_Config();
-
 	/*Init the LCD*/
 	STM32f4_Discovery_LCD_Init();
 	// LCD_LOG_Init();
 
 	/**** LCD Calibration Data got with : lcd_touch project ***/
-	//InitTouch(-0.096, 0.0650, -367, 15);
-	InitTouch(-0.1247, 0.0650, -348, 15);
-
-
-	/*********************************************************** 
-	 * Tool to choose color in 16 bits RGB (5:6:5) 
-	 * https://ee-programming-notepad.blogspot.com/2016/10/16-bit-color-generator-picker.html
-	 **********************************************************/
-
+	InitTouch(-0.1247, 0.0650, -349, 5);
+	
 	LCD_Clear(APP_BACKGROUND_COLOR);
 	LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
 	DrawInit(weather_ui);
 	DrawFixWidgets();
 	LCD_SetFont(&Font8x12);
 
-	SetRelAlarm(AlarmTaskLCDTouch, 1, 50);
-	SetRelAlarm(Alarm_ESP82266_RevResponse, 1, 40);
-	SetRelAlarm(Alarm_ESP8266_FSM, 15, 80);
-	// SetRelAlarm(Alarm_Weather_Update, 180000, 180000);
-	SetRelAlarm(Alarm_Weather_Update, 45000, 20000);
+	EXEC(LCD_IN);
+	EXEC(ESP8266_POLL);
+	EXEC(NETWORK);
+	EXEC(WEATHER_UPDATE);
 
 	for (;;) {
 	}
 
 }
 
-/*
-48
-01 07
-
-33
-5.17 - 5.29
-0.30 - 
-1.A
-15
-*/

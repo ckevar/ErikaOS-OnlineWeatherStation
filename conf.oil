@@ -41,7 +41,7 @@
 /*
  * Simple demo that shows how to use the USART peripheral.
  *
- * Author: 2013  Gianluca Franchino.
+ * Author: 2024 C. Alvarado.
  *
  */
 
@@ -50,14 +50,12 @@ CPU mySystem {
 	OS myOs {
 
 		EE_OPT = "DEBUG";
-		//EE_OPT = "__KEIL_4_54_OLDER__";
 		EE_OPT = "__KEIL_USE_AXF_EXT__";
 		
 		
 		CPU_DATA = CORTEX_MX {
 			MODEL = M4;
 			APP_SRC = "code.c";
-			//COMPILER_TYPE = KEIL; 
 			COMPILER_TYPE = GNU;
 			MULTI_STACK = FALSE;
 		};
@@ -107,12 +105,12 @@ CPU mySystem {
  	
 	COUNTER myCounter;
 
-	ALARM Alarm_ESP8266_FSM {
+	ALARM NETWORK_ALARM {
 		COUNTER = myCounter;
-		ACTION = ACTIVATETASK { TASK = Task_ESP8266_FSM;};
+		ACTION = ACTIVATETASK { TASK = NETWORK;};
 	};
 
-	TASK Task_ESP8266_FSM {
+	TASK NETWORK {
 		PRIORITY = 0x02;   /* Low priority */
 		AUTOSTART = FALSE;
 		STACK = SHARED;
@@ -120,12 +118,12 @@ CPU mySystem {
 		SCHEDULE = FULL;
 	};
 	
-	ALARM Alarm_ESP82266_RevResponse {
+	ALARM ESP8266_POLL_ALARM {
 		COUNTER = myCounter;
-		ACTION = ACTIVATETASK { TASK = Task_ESP82266_RevResponse; };
+		ACTION = ACTIVATETASK { TASK = ESP8266_POLL; };
 	};
 	
-	TASK Task_ESP82266_RevResponse {
+	TASK ESP8266_POLL {
 		PRIORITY = 0x01;   /* Low priority */
 		AUTOSTART = FALSE;
 		STACK = SHARED;
@@ -133,12 +131,12 @@ CPU mySystem {
 		SCHEDULE = FULL;
 	};
 	
-	ALARM AlarmTaskLCDTouch {
+	ALARM LCD_IN_ALARM {
 		COUNTER = myCounter;
-		ACTION = ACTIVATETASK { TASK = TaskLCDTouch; };
+		ACTION = ACTIVATETASK { TASK = LCD_IN; };
 	};
 
-	TASK TaskLCDTouch {
+	TASK LCD_IN {
 		PRIORITY = 0x03;   /* Low priority */
 		AUTOSTART = FALSE;
 		STACK = SHARED;
@@ -146,12 +144,12 @@ CPU mySystem {
 		SCHEDULE = FULL;
 	};
 
-	ALARM Alarm_Weather_Update {
+	ALARM WEATHER_UPDATE_ALARM {
 		COUNTER = myCounter;
-		ACTION = ACTIVATETASK { TASK = Task_Weather_Update; };
+		ACTION = ACTIVATETASK { TASK = WEATHER_UPDATE; };
 	};
 
-	TASK Task_Weather_Update {
+	TASK WEATHER_UPDATE {
 		PRIORITY = 0x01;
 		AUTOSTART = FALSE;
 		STACK = SHARED;

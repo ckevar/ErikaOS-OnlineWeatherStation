@@ -16,7 +16,7 @@
 char *json_get_value_ptr(char *json, char *key, unsigned short key_len) {
 	while (*json) {
 		// Getting the Fragment of interest
-		if (*json == '"' && *(json + key_len + 2) == ':') {
+		if (*json == '"' && *(json + key_len + 1) == '"') {
 			// There's a risk that the json + key_len + 1 equals is 
 			// different than '"'
 			json++;
