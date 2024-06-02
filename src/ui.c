@@ -8,10 +8,12 @@
 #include <time.h>
 #include <stdlib.h>
 
+#include "stm32f4_discovery.h"
 #include "WidgetConfig.h"
 
 #include "Widget.h"
 #include "fonts.h"
+#include "STMPE811QTR.h"
 
 #include "OW01d.h"
 #include "OW02d.h"
@@ -149,7 +151,7 @@ void DrawFixWidgets() {
 	WPrint(&weather_ui[TEMP_DEGREE2_STR], "C");	
 	WPrintLog(&weather_ui[SPOTIFY_STATUS], "Spotify Non Connected");
 
-    /* Buton Bar */
+    /* Button Bar */
 	LCD_SetColors(0x3b2d, 0x3b2d);
     LCD_DrawFullRect(19, 172, 288, 51);
     LCD_SetColors(0x03dd, 0x03d2d);
@@ -159,9 +161,27 @@ void DrawFixWidgets() {
     LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
 	/*************/
 
-
     DrawOff(&weather_ui[WiFi_AP_SET]);
 	DrawOff(&weather_ui[SPOTIFY]);
+}
+void UI_init(void) {
+	STM_EVAL_LEDInit(LED4);
+	
+	/* Init Touchscreen */
+	IOE_Config();
+	InitTouch(-0.1247, 0.0650, -349, 5);
+
+	STM32f4_Discovery_LCD_Init();
+	// LCD_LOG_Init();
+	
+	LCD_Clear(APP_BACKGROUND_COLOR);
+	LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
+	
+	DrawInit(weather_ui);
+	
+	DrawFixWidgets();
+
+	LCD_SetFont(&Font8x12);
 }
 
 /**************** PROGRESS BAR FUNCTIONS ***************/

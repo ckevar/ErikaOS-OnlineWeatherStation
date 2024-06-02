@@ -101,12 +101,6 @@ TASK(LCD_IN) {
 
 	burst <<= 1;
 }
-/**
- * This search for specific words in the message received, but it looks
- * for them, starting in the begging of the buffer until where there's
- * no more chars, and everytime this task is executed, the RX_READ starts
- *.where the last search ended in the buffer.
- */
 TASK(ESP8266_POLL) {
 	if (esp8_status.cmd == ESP8_UNKNOWN) {
 		esp8266_response();
@@ -115,15 +109,16 @@ TASK(ESP8266_POLL) {
 
 }
 
-/**
- * Task used for FSM.
- */
 TASK(NETWORK) {
 	network();
 }
 
 TASK(WEATHER_UPDATE) {
-	app_fsm_restart();
+	weather_update();
+}
+
+TASK(SPOTIFY_UPDATE) {
+	spotify_update_player();
 }
 
 /*
@@ -180,29 +175,14 @@ int main(void)
 	EE_systick_enable_int();
 	EE_systick_start();
 
-	// ui_init();
-	STM_EVAL_LEDInit(LED4);
+	UI_init();
 	esp8266_init();
-
-	/* Init Touchscreen */
-	IOE_Config();
-	/*Init the LCD*/
-	STM32f4_Discovery_LCD_Init();
-	// LCD_LOG_Init();
-
-	/**** LCD Calibration Data got with : lcd_touch project ***/
-	InitTouch(-0.1247, 0.0650, -349, 5);
 	
-	LCD_Clear(APP_BACKGROUND_COLOR);
-	LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
-	DrawInit(weather_ui);
-	DrawFixWidgets();
-	LCD_SetFont(&Font8x12);
-
 	EXEC(LCD_IN);
 	EXEC(ESP8266_POLL);
 	EXEC(NETWORK);
 	EXEC(WEATHER_UPDATE);
+	EXEC(SPOTIFY_UPDATE);
 
 	for (;;) {
 	}

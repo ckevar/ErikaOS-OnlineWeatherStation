@@ -105,6 +105,7 @@ CPU mySystem {
  	
 	COUNTER myCounter;
 
+	/******* NETWORK FSM *******/
 	ALARM NETWORK_ALARM {
 		COUNTER = myCounter;
 		ACTION = ACTIVATETASK { TASK = NETWORK;};
@@ -118,6 +119,7 @@ CPU mySystem {
 		SCHEDULE = FULL;
 	};
 	
+	/******* Interface for the ESP8266 *******/
 	ALARM ESP8266_POLL_ALARM {
 		COUNTER = myCounter;
 		ACTION = ACTIVATETASK { TASK = ESP8266_POLL; };
@@ -131,6 +133,7 @@ CPU mySystem {
 		SCHEDULE = FULL;
 	};
 	
+	/******* Touch *******/
 	ALARM LCD_IN_ALARM {
 		COUNTER = myCounter;
 		ACTION = ACTIVATETASK { TASK = LCD_IN; };
@@ -143,7 +146,8 @@ CPU mySystem {
 		ACTIVATION = 1;    /* only one pending activation */
 		SCHEDULE = FULL;
 	};
-
+	
+	/******* Weather *******/
 	ALARM WEATHER_UPDATE_ALARM {
 		COUNTER = myCounter;
 		ACTION = ACTIVATETASK { TASK = WEATHER_UPDATE; };
@@ -151,6 +155,20 @@ CPU mySystem {
 
 	TASK WEATHER_UPDATE {
 		PRIORITY = 0x01;
+		AUTOSTART = FALSE;
+		STACK = SHARED;
+		ACTIVATION = 1;
+		SCHEDULE = FULL;
+	};
+	
+	/******* Spotify *******/
+	ALARM SPOTIFY_UPDATE_ALARM {
+		COUNTER = myCounter;
+		ACTION = ACTIVATETASK { TASK = SPOTIFY_UPDATE; };
+	};
+	
+	TASK SPOTIFY_UPDATE {
+		PRIORITY = 0x02;
 		AUTOSTART = FALSE;
 		STACK = SHARED;
 		ACTIVATION = 1;

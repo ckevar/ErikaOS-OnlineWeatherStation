@@ -49,8 +49,7 @@ extern Widget weather_ui[NUMWIDGETS];
 
 void DrawFixWidgets();
 
-// void set_ImageWidget(Image *Img_w, unsigned char *img_ptr);
-
+void UI_init(void);
 void UI_clear_progress(void);
 void UI_set_progress(short state, short max_state);
 void UI_set_err_progress(short state, short max_state);
