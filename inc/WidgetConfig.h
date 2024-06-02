@@ -32,6 +32,7 @@ TEMP_UNI_IMG,
 STATE_DEV_STR,	
 REQ_TIME,   
 SPOTIFY_STATUS,
+MUSIC_CAST,
 NUMWIDGETS,	
 };
 
@@ -40,6 +41,7 @@ NUMWIDGETS,
 
 // 0xb798 -> This is background color in a lazy way
 #define APP_BACKGROUND_COLOR 		0x7f12
+#define APP_ON_PRIMARY_CONTAINER	0x0962
 
 #define UI_CLEAN_PROGRESS_BAR_COLOR 0xffff
 #define UI_PROGRESS_BAR_COLOR 		0x0962

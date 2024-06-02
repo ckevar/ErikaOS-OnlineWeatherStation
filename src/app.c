@@ -398,9 +398,10 @@ enum ClientIDs {
 	WEATHER,
 	SPOTIFY_AUTH,
 	SPOTIFY_PLAYER,
+	AUTOMATIC,
 };
 
-void client_function(struct StateS *state)  {
+void client_function(struct StateS *state, uint8_t *_client_id)  {
     static enum AppClientState client_state = CLIENT_CONF;
 	static enum ClientIDs client_id;
     static struct Socket sock;
@@ -410,6 +411,12 @@ void client_function(struct StateS *state)  {
 	static char spotify_token[SPOTIFY_TOKEN_SIZE];
 	static char spotify_rtoken[SPOTIFY_RTOKEN_SIZE];
 	int16_t size;
+
+	if(*_client_id != AUTOMATIC) {
+		client_id = *_client_id;
+		*_client_id = AUTOMATIC;
+		client_state = CLIENT_CONF;
+	}
 
 	switch(client_id) {
 	case LOCATION:
@@ -458,9 +465,10 @@ void client_function(struct StateS *state)  {
 			fsm_client(state, &sock);
 		
 			if(SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
-				if (*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > ' ') {
+				if (*spotify_token > ' ') {
+					client_id = SPOTIFY_PLAYER;
+				} else if (*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > ' ') {
 					client_id = SPOTIFY_AUTH;
-					*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 				}
 				else {
 					client_id = LOCATION;
@@ -624,17 +632,18 @@ void NetEventHandler(struct StateS *s,\
 		(SUPERSTATE(*s->state) != ESP8SS_STATION_CREDENTIALS) &&\
 		(SUPERSTATE(*s->nx_state) == ESP8SS_READY)) 
 	{
-
-		if(internal_events & SPOTIFY_UPDATE_EVENT) {
-			internal_events &= ~SPOTIFY_UPDATE_EVENT;
-			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
-			*client_id = SPOTIFY;
-
-		} else if (internal_events & WEATHER_UPDATE_EVENT) {
+		if (internal_events & WEATHER_UPDATE_EVENT) {
 			internal_events &= ~WEATHER_UPDATE_EVENT;
 			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
 			*client_id = LOCATION;
 		}
+		else if(internal_events & SPOTIFY_UPDATE_EVENT) {
+			internal_events &= ~SPOTIFY_UPDATE_EVENT;
+			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
+			*client_id = SPOTIFY;
+
+		}
+	
 		*s->state = *s->nx_state;
 	}
 

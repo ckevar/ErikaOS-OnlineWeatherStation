@@ -163,7 +163,7 @@ static short fsm_on_timeout(unsigned short prev_state) {
     }
 }
 
-__attribute__((weak)) void client_function(struct StateS *s)  {
+__attribute__((weak)) void client_function(struct StateS *s, uint8_t *client_id)  {
 	
 	static struct Socket sock;
 	
@@ -284,7 +284,7 @@ void network(void) {
             break;
 
         case ESP8SS_CLIENT:
-            client_function(&nu_state);
+            client_function(&nu_state, &client_id);
             break;
         
         case ESP8SS_READY:

@@ -51,7 +51,7 @@ enum WifiStatus {
 void network(void);		// runs the Finite-State Machine
 void app_fsm_restart(void);
 void server_function(struct StateS *s, uint8_t server_id);
-void client_function(struct StateS *s);
+void client_function(struct StateS *s, uint8_t *client_id);
 void NetEventHandler(struct StateS *s, uint8_t *server_id, uint8_t *client_id);
 
 #endif

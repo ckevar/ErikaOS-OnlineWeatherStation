@@ -48,10 +48,9 @@
 #include "settings_on.h"
 
 #include "spotify_off.h"
-
+#include "music_cast.h"
 // tmp header
 #include "lcd_log.h"
-
 
 const static unsigned char *temp_number[10] = {zero, one, two, three, 
     four, five, six, seven, eight, nine};
@@ -60,13 +59,16 @@ Image location_icon = {
 	.image = (unsigned char *)no_location
 };
 
-Text city = {
-	&Font16x24, Black
+Text txt16x24_on_primary = {
+	&Font16x24, APP_ON_PRIMARY_CONTAINER
 };
 
-Text description = {
-	// &Font12x12, Black
-	&Font8x8, Black
+Text txt8x8_on_primary = {
+	&Font8x8, APP_ON_PRIMARY_CONTAINER
+};
+
+Text feels_like_txt = {
+	&Font12x12, APP_ON_PRIMARY_CONTAINER
 };
 
 ButtonIcon WiFi_icon = {
@@ -79,22 +81,6 @@ ButtonIcon WiFi_AP_icon = {
 
 ButtonIcon spotify_icon = {
 	NULL, spotify_off, SPOTIFY_CONF_EVENT
-};
-
-Text temp_val = {
-	&Font16x24, Black
-};
-
-Text temp_degree = {
-	&Font16x24, Black
-};
-
-Text feels_like_txt = {
-	&Font12x12, Black
-};
-
-Text feels_like_tmp = {
-	&Font16x24, Black
 };
 
 Image OW_description_img = {
@@ -113,36 +99,44 @@ Image temp_uni_img = {
 	.image = (unsigned char *)zero
 };
 
-Text state_dev = {
-	&Font8x8, Black
+Image music_cast_icon = {
+	.image = (unsigned char *)music_cast_raw
 };
 
 #define LEFT_ALIGN_X		13	
-#define TEMP_ON_Y			45
-#define BUTTON_ON_Y			183
-#define TEMP_FEELS_LIKE_Y	127
+#define TEMP_ON_Y			42
+#define BUTTON_Y			183
+#define FEELS_LIKE_Y		120
+#define SPOTIFY_INFO_X		17
+#define SPOTIFY_INFO_Y		157
 
 Widget weather_ui[NUMWIDGETS] = {
 	// Pos Y, pos X, dim x, dim y, type, pointer of the text
 	{12, LEFT_ALIGN_X, 20, 20, IMAGE, (void *)&location_icon},
-	{13, 40, 24, 24, TEXT, (void *)&city},
-	{35, BUTTON_ON_Y, 42, 30, BUTTONICON, (void *)&WiFi_icon},
-	{118, BUTTON_ON_Y, 30, 30, BUTTONICON, (void *)&WiFi_AP_icon},
-	{192, BUTTON_ON_Y, 30, 30, BUTTONICON, (void *)&spotify_icon},
-	{143, LEFT_ALIGN_X, 8, 8, TEXT, (void *)&description},
-	{79, 285, 24, 24, TEXT, (void *)&temp_degree},
-	{115, 141, 12, 12, TEXT, (void *)&feels_like_txt},
-	{TEMP_FEELS_LIKE_Y, 141, 12, 12, TEXT, (void *)&feels_like_txt},
-	{TEMP_FEELS_LIKE_Y - 9, 220, 24, 24, TEXT, (void *)&feels_like_tmp},
-	{TEMP_FEELS_LIKE_Y - 9, 285, 24, 24, TEXT, (void *)&temp_val},
+	{13, 40, 24, 24, TEXT, (void *)&txt16x24_on_primary},
+	{63, BUTTON_Y, 42, 30, BUTTONICON, (void *)&WiFi_icon},
+	{151, BUTTON_Y, 30, 30, BUTTONICON, (void *)&WiFi_AP_icon},
+	{225, BUTTON_Y, 30, 30, BUTTONICON, (void *)&spotify_icon},
+	{140, LEFT_ALIGN_X, 8, 8, TEXT, (void *)&txt8x8_on_primary},
+	{79, 285, 24, 24, TEXT, (void *)&txt16x24_on_primary},
+	{FEELS_LIKE_Y - 12, 141, 12, 12, TEXT, (void *)&feels_like_txt},
+	{FEELS_LIKE_Y, 141, 12, 12, TEXT, (void *)&feels_like_txt},
+	{FEELS_LIKE_Y - 9, 220, 24, 24, TEXT, (void *)&txt16x24_on_primary},
+	{FEELS_LIKE_Y - 9, 285, 24, 24, TEXT, (void *)&txt16x24_on_primary},
 	{19, 32, 100, 100, IMAGE, (void *)&OW_description_img},
 	{123, TEMP_ON_Y, 54, 54, IMAGE, (void *)&temp_sign}, 
 	{177, TEMP_ON_Y, 54, 54, IMAGE, (void *)&temp_dec_img},
 	{231, TEMP_ON_Y, 54, 54, IMAGE, (void *)&temp_uni_img},
-	{228, 5, 8, 8, TEXT, (void *) &state_dev},
-    {14, 251, 8, 8, TEXT, (void *) &state_dev},
-    {157, LEFT_ALIGN_X, 8, 8, TEXT, (void *) &state_dev}
+	{228, 5, 8, 8, TEXT, (void *) &txt8x8_on_primary},
+    {14, 251, 8, 8, TEXT, (void *) &txt8x8_on_primary},
+    {SPOTIFY_INFO_Y, SPOTIFY_INFO_X, 8, 8, TEXT, (void *) &txt8x8_on_primary},
+	{5, SPOTIFY_INFO_Y, 10, 8, IMAGE, (void *)&music_cast_icon}
 };
+
+#define BBOX_X	44
+#define BBOX_Y	172
+#define BBOX_W	233
+#define BBOX_H	51
 
 void DrawFixWidgets() {
 	WPrint(&weather_ui[TEMP_DEGREE_STR], "C");	
@@ -153,12 +147,29 @@ void DrawFixWidgets() {
 
     /* Button Bar */
 	LCD_SetColors(0x3b2d, 0x3b2d);
-    LCD_DrawFullRect(19, 172, 288, 51);
-    LCD_SetColors(0x03dd, 0x03d2d);
-    LCD_DrawFullRect(19, 223, 288, 1);
-    LCD_SetColors(0x0E2d, 0x0E2d);
-    LCD_DrawFullRect(19, 224, 288, 1);
+    LCD_DrawFullRect(BBOX_X, BBOX_Y, BBOX_W, BBOX_H);
+
     LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
+	
+	/* Upper Right */
+	LCD_DrawLine(BBOX_X, BBOX_Y, 4, 0);
+	LCD_DrawLine(BBOX_X, BBOX_Y + 1, 2, 0);
+	LCD_DrawLine(BBOX_X, BBOX_Y + 2, 2, 1);
+
+	/* Bottom Right */
+	LCD_DrawLine(BBOX_X, BBOX_Y + BBOX_H, 4, 0);
+	LCD_DrawLine(BBOX_X, BBOX_Y + BBOX_H - 1, 2, 0);
+	LCD_DrawLine(BBOX_X, BBOX_Y + BBOX_H - 3, 2, 1);
+
+	/* Bottom Left */
+	LCD_DrawLine(BBOX_X + BBOX_W - 4, BBOX_Y + BBOX_H, 4, 0);
+	LCD_DrawLine(BBOX_X + BBOX_W - 2, BBOX_Y + BBOX_H - 1, 2, 0);
+	LCD_DrawLine(BBOX_X + BBOX_W - 1, BBOX_Y + BBOX_H - 3, 2, 1);
+
+	/* Upper Left */
+	LCD_DrawLine(BBOX_X + BBOX_W - 4, BBOX_Y, 4, 0);
+	LCD_DrawLine(BBOX_X + BBOX_W - 2, BBOX_Y + 1, 2, 0);
+	LCD_DrawLine(BBOX_X + BBOX_W - 1, BBOX_Y + 2, 2, 1);
 	/*************/
 
     DrawOff(&weather_ui[WiFi_AP_SET]);
@@ -395,7 +406,7 @@ void UI_setTime(char *timezone, char *time) {
 }
 
 void UI_set_track(char *msg) {
-	LCD_DrawFullRect(13, 157, 300, 8);
+	LCD_DrawFullRect(SPOTIFY_INFO_X, SPOTIFY_INFO_Y, 300, 8);
 	WPrintLog(&weather_ui[SPOTIFY_STATUS], msg);
 }
 /*******************************************************/

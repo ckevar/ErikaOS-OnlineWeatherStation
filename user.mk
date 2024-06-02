@@ -13,4 +13,4 @@ zero.c one.c two.c three.c four.c five.c six.c seven.c eight.c nine.c\
 location.c no_location.c \
 WiFi_no.c WiFi_settingup.c WiFi_connected.c\
 settings_on.c settings_off.c\
-spotify_off.c
+spotify_off.c music_cast.c
