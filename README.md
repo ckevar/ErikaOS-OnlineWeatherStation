@@ -1,5 +1,5 @@
 # ErikaOs-OnlineWeatherStation
-![image](data/ui_design/ui_figma.png "Design on Figma")
+![image](data/img/ui_figma.png "Design on Figma")
 
 It's a tiny monitor for you local weather and music player, meaning, it shows the current temperature, the feeling like temperature, the temperature description and the time of request, as for the music, the artist and track that are currently being played on your Spotify player (_disclaimer_: it does not play or pause the track). The weather information is fetched from [OpenWeatherMap.org](openweathermap.org) using location based on [IP-API.com](ip-api.com). In case of [Spotify](https://developer.spotify.com/), it fetches the code for the app and token (with refreshment once it's expired, 3600 s).
 
@@ -44,6 +44,36 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
   
 
 - __Network__, triggered each 80ms, runs the web client or the web servers upon request of the previous tasks.
+
+```mermaid
+---
+title: Fig 1. Network Overall FSM
+---
+stateDiagram-v2 
+[*] --> POWER_UP 
+POWER_UP --> INITIAL_SETUP
+
+ON_HOLD --> READY
+READY --> READY
+
+INITIAL_SETUP --> ON_HOLD
+NETSTATUS --> ON_HOLD
+CLIENT --> ON_HOLD
+AP --> ON_HOLD
+SERVER --> ON_HOLD
+
+ON_HOLD --> INITIAL_SETUP 
+ON_HOLD --> NETSTATUS
+ON_HOLD --> CLIENT
+ON_HOLD --> AP
+ON_HOLD --> SERVER
+ON_HOLD --> ERROR
+
+ERROR --> NETSTATUS
+ERROR --> AP
+ERROR --> INITIAL_SETUP
+
+```
 
  ## Future Improvements
 

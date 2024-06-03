@@ -240,31 +240,7 @@ void network(void) {
     enum ESP8NetManagerState supers;
 
 	NetEventHandler(&nu_state, &server_id, &client_id);
-	/*
-	if (IsEvent(SPOTIFY_CONF_EVENT)) {
-		nx_state = MKSTATE(ESP8SS_SERVER, 0);
-		state = nx_state;
-		server_id = 1;
-		ClearEvents();
-	}
 
-	if (IsEvent(SET_AP_ESP8266_EVNT)) {
-        nx_state = MKSTATE(ESP8SS_AP, 0);
-		state =  MKSTATE(ESP8SS_AP, 0);
-		server_id = 0;
-		ClearEvents();
-	}
-	
-	if	(INTERNAL_EVENT_UPDATE &&\
-		(SUPERSTATE(state) != ESP8SS_AP) &&\
-        (SUPERSTATE(state) != ESP8SS_SERVER) &&\
-		(SUPERSTATE(state) != ESP8SS_STATION_CREDENTIALS))
-	{
-		INTERNAL_EVENT_UPDATE = 0;
-        nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
-		state =  MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
-	}
-	*/
     supers = SUPERSTATE(*nu_state.nx_state);
 	switch (supers) {
 		case ESP8SS_POWER_UP:

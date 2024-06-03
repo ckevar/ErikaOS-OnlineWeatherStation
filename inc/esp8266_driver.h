@@ -58,7 +58,6 @@
 #define ESP8266_AT_CIPSERVER_ON_P80 	"AT+CIPSERVER=1,80"
 #define ESP8266_AT_CIPSERVER_ON_P80_LEN 17
 
-// Aparently without sending the port, it deletes the web server
 #define ESP8266_AT_CIPSERVER_OFF 		"AT+CIPSERVER=0" 
 #define ESP8266_AT_CIPSERVER_OFF_LEN 	14
 
