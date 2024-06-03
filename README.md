@@ -33,7 +33,7 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
 - __ESP8266 Poll__
 
-  Triggered each 40 ms, parses the incoming data of the ESP8266. 40ms has being chosen cause initially the circular buffer where the DMA is placing the incoming data was 1024 bytes, and at 1115200 bauds with 1 bit of start + 1 bit of ending the transition on the UART  makes 10240 bits. therefore the buffer can be filled in 88ms, to avoid losing data, it's better to emptied as soon as possible, but not too soon, so 40ms seems the right number. that buffer dimension works perfect when fetching weather information because the data barely arrives to 1Kbytes. It's a different story for Spotify where sometimes it gives 13Kbytes for a song. So, the buffer isnt enough. However the 40ms seems to working fine.
+  Triggered each 40 ms, parses the incoming data of the ESP8266. 40ms has being chosen because initially the circular buffer where the DMA is placing the incoming data was 1024 bytes size, and at 115200 bauds with 1 start bit  and 1 end bit on the UART, 10240 bits will fill the buffer in 88ms, to avoid overlapping data, it's better to empty it as soon as possible,  so (by Nyquist) 40ms will do the job. that buffer dimension works perfect when fetching weather information because the data barely reaches 1Kbytes. It's a different story for Spotify where sometimes it throws 13Kbytes for a song. So, the initial buffer dimension isn't enough. But choosing a larger period will make other processes slowly, like when settings up the ESP8266,  are average 14 bytes size (~1.2ms). So, the current mechanism doesnt try to empty the buffer but just wait for the content of the HTTP, the header containing larger amount of cookies is discarded.  
 
    
 
@@ -87,6 +87,7 @@ $ nano usr.mk
 Locate the line that starts with _GNU_ARM_ROOT_ and change it by the path where your compiler is installed.
 
 ## Requirements
+- ESP8266-IDF-ATV2.2.1 firmware
 - Erika2.x OS (the operating system of the board)
 - gcc-arm-none-eabi (to compile the project)
 - stlink (to flash the board)
