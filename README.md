@@ -1,8 +1,25 @@
 # ErikaOs-OnlineWeatherStation
-It drags weather information from OpenWeather.org using location based on ip-api.com.
+It's a tiny monitor for you local weather and music player, meaning, it shows the current temperature, the feeling like temperature, the temperature description and the time of request, as for the music, the artist and track that are currently being played on your Spotify player (_disclaimer_: it does not play or pause the track). The weather information is fetched from OpenWeatherMap.org using location based on IP-api.com. In case of Spotify, it fetches the code for the app and token (with refreshment once it's expired, 3600 s).
+
+Two web servers were built as well, (1) the WiFi supplicant that allows the user to connect to any Access Point and (2) the Spotify Authenticator to link a Spotify account. These servers run in different modes of the WiFi module, when as a supplicant, the module works as SoftAP and station so, the user can join the WiFi network **Erika Weather**, browse to [http://192.168.4.1/](http://192.168.4.1) and set the SSID and password of the desired network and wait for connection. As Spotify Authenticator, recommended to use only when there's an internet connection and browse to [http://your-esp8266-ip/spotify](), this provides the link that will authenticate the user's Spotify account and later it will automatically fetch the token.   
+
 ## Hardware 
-It's a _STM32f407-discovery_ using _std_ library mounted over a _dicover-more_ extension board. This board also includes a LCD. 
-The ESP8266 is connected through UART in the COM1 (USART6 on the _discovery_ PC6-PC7 pins) on the _std_ library. ESP8266's reset/GPIO0/GIPO2/Enable pin are fixed voltage, meaning they are not connected to any STM32's GPIOS.
+
+The main board is a _STM32f407-discovery_ using _std_ library mounted over a _discover-more_ extension with and LCD _LCD35RT_. The secondary board is an ESP8266 that interfaces through UART in the COM1 (USART6 on the _discovery_ PC6-PC7 pins) on the _std_ library. ESP8266's reset/GPIO0/GIPO2/Enable pin are fixed voltage, meaning they are not connected to any STM32's GPIOS.
+
+## Firmware
+
+On the seconday board, ESP8266, the _ESP8266-IDF-ATV2.2.1.0_ is running, provided by Espressif, you can find in [this link](https://gist.github.com/ckevar/4275573daf5d2d4803346ab56bf4e0fe) how to install this firmware on the ESP8266.
+
+In the main board, the app was built based on ErikaRTOSv2, it's divided in 6 periodic tasks (code: _inc/erika_task_conf.h_):
+
+- _Weather Update_, triggered each 10 minutes, fetches the weather information.
+- _LCD In_, triggered each 20 ms, checks if the LCD has beeing touched.
+- ESP8266 Poll, triggered each 40 ms, parses the incoming data of the ESP8266.
+- Network, triggered each 80ms, runs the web client or the web servers.
+- Spotify Update, triggered each 20s, fetches the Spotify player information.
+
+
 
 ## How to run/flash it
 if the hardware is ready, The file _c_mX.bin_ can be flashed as follows:
