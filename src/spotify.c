@@ -3,18 +3,18 @@
 
 #include "json_parser.h"
 
-char mkHTTP_SpotySupplicant(WebAppBuilder_t *WAOpt, char *ipv4) {
+char mkHTTP_SpotySupplicant(struct Http *http, char *ipv4) {
 	char *tmp;
 	int16_t size;
 
-	size = mkHTTPHeader(WAOpt);
+	size = mkHTTPHeader(http);
 	if(size < 0)
 		return -1;
 
-	tmp = WAOpt->http + size;
+	tmp = http->http + size;
 	HTTPHEADERcpy(tmp, HTTP_CONTENT_LEN);
 
-	switch(WAOpt->content) {
+	switch(http->content) {
 	case SPOTY_RESP:
 		size = snprintf(tmp + 7, 512, SPOTY_HTML, ipv4);
 		
@@ -33,8 +33,11 @@ char mkHTTP_SpotySupplicant(WebAppBuilder_t *WAOpt, char *ipv4) {
 	tmp++;
 	*tmp = 0;
 
-	WAOpt->http_len = tmp - WAOpt->http;
-	WAOpt->http_len2 = snprintf(WAOpt->http_len_str,HTTP_LEN_DIGITS, "%d", WAOpt->http_len);
+	http->size = tmp - http->http;
+	size = snprintf(http->size_str,HTTP_LEN_DIGITS, "%d", http->size);
+	
+	if(size < 0 || size > HTTP_LEN_DIGITS)
+		return -1;
 
 	return 0;
 }
@@ -104,13 +107,6 @@ char spotify_get_track(char *json, char **vals, uint16_t *vals_sizes) {
 		dest++;
 
 	vals_sizes[iSPOTIFY_SONG] = dest - vals[iSPOTIFY_SONG];
-	
-	/*
-	if(json_query_mulKey_ValPtrLen(json, SPOTIFY_TRACK_COUNT,\
-			keys, keys_sizes, vals, vals_sizes) > 0) {
-		return 1;
-	}
-	*/
 	
 	return 0;
 }

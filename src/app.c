@@ -7,7 +7,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "wapp.h"
 #include "state.h"
 #include "wifi_supplicant.h"
 
@@ -22,7 +21,7 @@
 #define SPOTIFY_UPDATE_EVENT	0b01
 #define WEATHER_UPDATE_EVENT	0b10
 
-WebAppBuilder_t webAppOptions;
+struct Http http_conf;
 static char		spotify_auth_content[SPOTIFY_AUTH_CONTENT_SIZE];
 static int16_t	spotify_code;
 static uint8_t internal_events = 0;
@@ -36,15 +35,15 @@ static void app_spotify_conf(uint8_t *success, char *http, void *arg) {
 		memset(http, 0, SPOTY_REQ_CALLBACK_LEN);
 		http += SPOTY_REQ_CALLBACK_LEN;
 
-		webAppOptions.content_type = HTTP_CONTTYPE_TXTHTML;
-		webAppOptions.status = HTTP_OK;
-		webAppOptions.connection = HTTP_CONN_CLOSE;
-		webAppOptions.content = SPOTY_CALLBACK_RESP;
+		http_conf.content_type = HTTP_CONTTYPE_TXTHTML;
+		http_conf.status = HTTP_OK;
+		http_conf.connection = HTTP_CONN_CLOSE;
+		http_conf.content = SPOTY_CALLBACK_RESP;
 
-		mkHTTP_SpotySupplicant(&webAppOptions, NULL);
+		mkHTTP_SpotySupplicant(&http_conf, NULL);
 
-		sock->rsize = webAppOptions.http_len_str;
-		esp8266_load_html(webAppOptions.http, webAppOptions.http_len);
+		sock->rsize = http_conf.size_str;
+		esp8266_load_html(http_conf.http, http_conf.size);
 
 		*success = 1;
 
@@ -64,15 +63,15 @@ static void app_spotify_conf(uint8_t *success, char *http, void *arg) {
 	MATCH(http, SPOTY_REQ) {
 		memset(http, 0, SPOTY_REQ_LEN);
 
-		webAppOptions.content_type = HTTP_CONTTYPE_TXTHTML;
-		webAppOptions.status = HTTP_OK;
-		webAppOptions.connection = HTTP_CONN_CLOSE;	
-		webAppOptions.content = SPOTY_RESP;
+		http_conf.content_type = HTTP_CONTTYPE_TXTHTML;
+		http_conf.status = HTTP_OK;
+		http_conf.connection = HTTP_CONN_CLOSE;	
+		http_conf.content = SPOTY_RESP;
 
-		mkHTTP_SpotySupplicant(&webAppOptions, ESP8266_IPv4.ip);
+		mkHTTP_SpotySupplicant(&http_conf, ESP8266_IPv4.ip);
 
-		sock->rsize = webAppOptions.http_len_str;
-		esp8266_load_html(webAppOptions.http, webAppOptions.http_len);
+		sock->rsize = http_conf.size_str;
+		esp8266_load_html(http_conf.http, http_conf.size);
 
 		*success = 1;
 		return;
@@ -86,14 +85,14 @@ static void app_spotify_conf(uint8_t *success, char *http, void *arg) {
 
 void mkHTMLx(const char icontent, const char status) {
 	/* Head */
-	webAppOptions.content_type = HTTP_CONTTYPE_TXTHTML;
-	webAppOptions.status = status;
-	webAppOptions.connection = HTTP_CONN_CLOSE;	
+	http_conf.content_type = HTTP_CONTTYPE_TXTHTML;
+	http_conf.status = status;
+	http_conf.connection = HTTP_CONN_CLOSE;	
 
 	/* Content */
-	webAppOptions.content = icontent;
+	http_conf.content = icontent;
 
-	mkHTTP_WSupplicant(&webAppOptions);
+	mkHTTP_WSupplicant(&http_conf);
 }
 
 void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
@@ -105,8 +104,8 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 		*http = 0; 
 
 		mkHTMLx(WSUPP_INDEX, HTTP_OK);
-        sock->rsize = webAppOptions.http_len_str;
-		esp8266_load_html(webAppOptions.http, webAppOptions.http_len);
+        sock->rsize = http_conf.size_str;
+		esp8266_load_html(http_conf.http, http_conf.size);
 
         *success = 1;
 		return;
@@ -117,8 +116,8 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 		memset(http, '\0', WRES_FAVICON_LEN);
 
 		mkHTMLx(WSUPP_NOT_FOUND, HTTP_NOT_FOUND);
-        sock->rsize = webAppOptions.http_len_str;
-	    esp8266_load_html(webAppOptions.http, webAppOptions.http_len);
+        sock->rsize = http_conf.size_str;
+	    esp8266_load_html(http_conf.http, http_conf.size);
         *success = 1;
 		return;
 		
@@ -129,8 +128,8 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 		char i = WRES_SETWiFi_LEN;
 
 		mkHTMLx(WEBAPP_ALLDONE, HTTP_OK);
-		sock->rsize = webAppOptions.http_len_str;
-		esp8266_load_html(webAppOptions.http, webAppOptions.http_len);
+		sock->rsize = http_conf.size_str;
+		esp8266_load_html(http_conf.http, http_conf.size);
 		*success = 1;
 
 		// Fast cleaning of the SSID and Password buffer

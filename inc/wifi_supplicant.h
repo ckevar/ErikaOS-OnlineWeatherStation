@@ -1,6 +1,7 @@
 #ifndef WIFI_SUPPLICANT_H
 #define WIFI_SUPPLICANT_H
 
+#include "http.h"
 
 #define WRES_INDEX			"/\0"
 #define WRES_INDEX_LEN		2
@@ -72,6 +73,6 @@
 #define WEBAPP_ALLDONE_H_LEN		3
 /********************************************************************/
 
-char mkHTTP_WSupplicant(WebAppBuilder_t *WAOpt);
+char mkHTTP_WSupplicant(struct Http *http);
 
 #endif

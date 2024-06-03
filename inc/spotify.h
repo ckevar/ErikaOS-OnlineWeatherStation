@@ -2,7 +2,6 @@
 #define SPOTIFY_H
 
 #include "spotify_private.h"
-#include "wapp.h"
 #include "http.h"
 
 #include <string.h>
@@ -38,7 +37,7 @@
 
 #define SPOTY_CALLBACK_RESP		1
 
-char mkHTTP_SpotySupplicant(WebAppBuilder_t *WAOpt, char *ipv4);
+char mkHTTP_SpotySupplicant(struct Http *http, char *ipv4);
 
 /**** Client ****/
 	/*** Token Request ***/
