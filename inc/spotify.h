@@ -3,6 +3,7 @@
 
 #include "spotify_private.h"
 #include "wapp.h"
+#include "http.h"
 
 #include <string.h>
 

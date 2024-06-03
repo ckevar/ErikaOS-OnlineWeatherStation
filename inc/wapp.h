@@ -41,11 +41,11 @@
 #define HTTP_AUTH_BASIC_STR			"Authorization: Basic %s\r\n"
 #define HTTP_AUTH_BASIC_LEN			21
 
-/* Content-Length */
+/* Content-Length
 #define HTTP_CONTENT_LEN
 #define HTTP_CONTENT_LEN_STR		"Content-length: "
 #define HTTP_CONTENT_LEN_LEN		16
-
+*/
 #define HTTP_LEN_DIGITS				4
 
 typedef struct WebAppBuilder_t {

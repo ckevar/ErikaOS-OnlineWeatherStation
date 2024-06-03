@@ -115,10 +115,12 @@
 #define ESP8266_CIPMUX_MULTI_CON		'1'	// Multiple connection mode
 
 /* +IPD STATUS Definitions */
-#define ESP8266_IPData_UKNOWN			0
-#define ESP8266_IPData_WAIT				1
-#define ESP8266_IPData_OK2PARSE			2
-#define ESP8266_IPData_WAIT2PARSE		3
+enum {
+	IPData_UKNOWN,
+	IPData_WAIT,
+	IPData_OK2PARSE,
+	IPData_DUMMY,
+};
 
 /* ESP8266 Types */
 typedef struct {
@@ -160,8 +162,13 @@ void esp8266_gmr(void);
 void esp8266_set_CWMODE(char mode);
 void esp8266_set_CIPMUX(char mux);
 void esp8266_set_SSID_and_PASS(char *ssid_and_pass, unsigned short len);
-void esp8266_tcp(char link, char *dns, unsigned short len);
-void esp8266_ssl(char link, char *dns, unsigned short len);
+
+void esp8266_cipstart(char *type, char link, char *host, unsigned short len);
+#define esp8266_tcp(link, host, len)	\
+	esp8266_cipstart(ESP8266_AT_CIPSTART_TCP, link, host, len);
+#define esp8266_ssl(link, host, len)	\
+	esp8266_cipstart(ESP8266_AT_CIPSTART_SSL, link, host, len);
+
 void esp8266_set_CIPSEND(char *len_of_data, unsigned short len);
 void esp8266_set_CIPSEND_link(char link, char *len_of_data, unsigned short len);
 void esp8266_set_CWSAP(char *cmd, unsigned short len);

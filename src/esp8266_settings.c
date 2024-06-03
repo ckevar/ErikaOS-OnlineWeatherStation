@@ -48,10 +48,6 @@ uint16_t LUT_on_err_powerup(enum ESP8PowerupState prev_subs) {
 }
 
 
-
-
-/********* Finite State Machines *********/
-
 void fsm_powerup(struct StateS *state) {
     enum ESP8PowerupState nx_state;
     nx_state = SUBSTATE(*state->nx_state);

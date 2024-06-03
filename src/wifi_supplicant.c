@@ -1,4 +1,5 @@
 #include "wapp.h"
+#include "http.h"
 #include "wifi_supplicant.h"
 
 #include <string.h>

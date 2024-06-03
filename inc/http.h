@@ -26,4 +26,10 @@ enum HTTPStatusCode {
 	HTTP_522,
 };
 
+/* Content-Length */
+#define HTTP_CONTENT_LEN
+#define HTTP_CONTENT_LEN_STR		"Content-Length: "
+#define HTTP_CONTENT_LEN_LEN		16
+
+
 #endif

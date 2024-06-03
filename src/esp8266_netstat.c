@@ -16,11 +16,9 @@ uint16_t LUT_OK_netstat(const enum ESP8NetManagerState superstate) {
     switch(esp8_status.wifi) {
     case WiFi_Ready:
     case TCP_UDP_Lost:
-        // switch(APP_FSM_SUPER_STATE) {
         switch(superstate) {
         case ESP8SS_NETSTATUS:  // case APP_FSM_SUPER_NORMAL:
         case ESP8SS_CLIENT:
-            // return MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT);
             return MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
 
         default:
