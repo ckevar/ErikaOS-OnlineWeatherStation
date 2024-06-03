@@ -45,33 +45,22 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
 - __Network__, triggered each 80ms, runs the web client or the web servers upon request of the previous tasks.
 
+  The Fig 1. shows the overall FSM of the network 
+
 ```mermaid
 ---
 title: Fig 1. Network Overall FSM
 ---
 stateDiagram-v2 
-[*] --> POWER_UP 
-POWER_UP --> INITIAL_SETUP
 
-ON_HOLD --> READY
-READY --> READY
-
-INITIAL_SETUP --> ON_HOLD
-NETSTATUS --> ON_HOLD
-CLIENT --> ON_HOLD
-AP --> ON_HOLD
-SERVER --> ON_HOLD
-
-ON_HOLD --> INITIAL_SETUP 
-ON_HOLD --> NETSTATUS
-ON_HOLD --> CLIENT
-ON_HOLD --> AP
-ON_HOLD --> SERVER
-ON_HOLD --> ERROR
-
-ERROR --> NETSTATUS
-ERROR --> AP
-ERROR --> INITIAL_SETUP
+[*] --> SuperState
+SuperState --> ON_HOLD
+ON_HOLD --> SuperState : esp8_status == OK
+ON_HOLD --> ERROR : esp8_status == ERROR
+ERROR --> SuperState : f(prev_state)
+SuperState --> READY : 
+READY --> SuperState : x_update | wifi_supplicant | spotify
+note left of SuperState : = INITIAL_SETUP, NETSTATUS, CLIENT, SERVER, AP
 
 ```
 

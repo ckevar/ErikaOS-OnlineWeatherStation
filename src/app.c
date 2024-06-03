@@ -499,7 +499,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 			} 
 
 			memset(spotify_token, 0, SPOTIFY_TOKEN_SIZE);
-			if(*spotify_rtoken > ' ')
+			if(*spotify_rtoken < ' ')
 				memset(spotify_rtoken, 0, SPOTIFY_RTOKEN_SIZE);
 
 			tmp_ptr[iSPOTIFY_TOKEN] = spotify_token;
