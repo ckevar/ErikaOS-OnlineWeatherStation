@@ -1,4 +1,6 @@
 # ErikaOs-OnlineWeatherStation
+![image](data/ui_design/ui_figma.png "Design on Figma")
+
 It's a tiny monitor for you local weather and music player, meaning, it shows the current temperature, the feeling like temperature, the temperature description and the time of request, as for the music, the artist and track that are currently being played on your Spotify player (_disclaimer_: it does not play or pause the track). The weather information is fetched from [OpenWeatherMap.org](openweathermap.org) using location based on [IP-API.com](ip-api.com). In case of [Spotify](https://developer.spotify.com/), it fetches the code for the app and token (with refreshment once it's expired, 3600 s).
 
 Two web servers were built as well, (1) the WiFi supplicant that allows the user to connect to any Access Point and (2) the Spotify Authenticator to link a Spotify account. These servers run in different modes of the WiFi module, when as a supplicant, the module works as SoftAP and station so, the user can join the WiFi network **Erika Weather**, browse to [http://192.168.4.1/](http://192.168.4.1) and set the SSID and password of the desired network and wait for connection. As Spotify Authenticator, recommended to use only when there's an internet connection and browse to [http://your-esp8266-ip/spotify](), this provides the link that will authenticate the user's Spotify account and later it will automatically fetch the token.   
@@ -11,17 +13,41 @@ The main board is a _STM32f407-discovery_ using _std_ library mounted over a _di
 
 ## Firmware
 
-On the seconday board, ESP8266, the _ESP8266-IDF-ATV2.2.1.0_ is running, provided by Espressif, you can find in [this link](https://gist.github.com/ckevar/4275573daf5d2d4803346ab56bf4e0fe) how to install this firmware on the ESP8266.
+On the seconday board, ESP8266, the _ESP8266-IDF-ATV2.2.1.0_ is running, provided by Espressif, you can find in [this link](https://gist.github.com/ckevar/4275573daf5d2d4803346ab56bf4e0fe) how to install this firmware on the ESP8266. This firmware version is important in order to establish SSL connections, the ATv1.6.x supports SSL, but from tests, it's seen that [*.spotify.com:443]() is virtually hosted on Google, so the SSL uses SNI and the ATv1.6.x does not support SNI.
 
-In the main board, the app was built based on ErikaRTOSv2, it's divided in 6 periodic tasks (code: _inc/erika_task_conf.h_):
+---
 
-- _Weather Update_, triggered each 10 minutes, fetches the weather information.
-- _LCD In_, triggered each 20 ms, checks if the LCD has beeing touched.
-- ESP8266 Poll, triggered each 40 ms, parses the incoming data of the ESP8266.
-- Network, triggered each 80ms, runs the web client or the web servers.
-- Spotify Update, triggered each 20s, fetches the Spotify player information.
+In the main board, the app was built based on ErikaRTOSv2, which is divided in 6 periodic tasks (code: _inc/erika_task_conf.h_): Weather Update, Spotify Update, ESP8266 Poll, LCD In and Network.
 
+- __Weather Update__
 
+  Triggered each 10 minutes, it triggers an internal event that invokes a change in the client of the task _Network_ to update the weather information. From experiments, the temperature information doesn't get updated faster than 10 minutes. So, the server only gives repetitive information when requested every 45s or 180s.
+
+    
+
+- __Spotify Update__
+
+  Triggered each 20s, it triggers an internal event that invokes a change in the client of the task _Network_ in order to fetch the Spotify player information. It's being seen that establishing a SSL connection to [api.spotify.com:443](https://api.spotify.com) on the ESP8266 takes 5 seconds + 2 seconds of transmitting the data through UART to the STM32 and parsing it. Spotify replies a minimum of ~7Kbytes: 1Kbytes of HTTP/1.1 header + 6Kbytes of JSON data. So, it's 7 seconds only one request. This can be reduce by not closing the SSL connection, unfortunately this option wasn't not explore in this project. The other option is to speed the UART, but it was not a good idea because the ESP8266 got "bricked".
+
+  
+
+- __ESP8266 Poll__
+
+  Triggered each 40 ms, parses the incoming data of the ESP8266. 40ms has being chosen cause initially the circular buffer where the DMA is placing the incoming data was 1024 bytes, and at 1115200 bauds with 1 bit of start + 1 bit of ending the transition on the UART  makes 10240 bits. therefore the buffer can be filled in 88ms, to avoid losing data, it's better to emptied as soon as possible, but not too soon, so 40ms seems the right number. that buffer dimension works perfect when fetching weather information because the data barely arrives to 1Kbytes. It's a different story for Spotify where sometimes it gives 13Kbytes for a song. So, the buffer isnt enough. However the 40ms seems to working fine.
+
+   
+
+- __LCD In__
+
+  Triggered each 20 ms, it checks if the LCD has being touched. An event-triggered filter was implemented in order to reduce the noise of the coordinates when touched. The following figure shows the raw data on the x axis when touched. Y axis does not need to be filtered because our icon size are 30 pixels and the standard deviation of the Y axis is smaller than that.
+
+  
+
+- __Network__, triggered each 80ms, runs the web client or the web servers upon request of the previous tasks.
+
+ ## Future Improvements
+
+1.  Not close the SSL connection with Spotify, it takes 5 seconds.
 
 ## How to run/flash it
 if the hardware is ready, The file _c_mX.bin_ can be flashed as follows:
