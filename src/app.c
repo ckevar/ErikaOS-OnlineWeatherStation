@@ -18,8 +18,9 @@
 
 #define MATCH(str, res)			if(memcmp(str, res, res##_LEN) == 0)
 
-#define SPOTIFY_UPDATE_EVENT	0b01
-#define WEATHER_UPDATE_EVENT	0b10
+#define SPOTIFY_UPDATE_EVENT		0b001
+#define WEATHER_UPDATE_EVENT		0b010
+#define WEATHER_UPDATE_EVENT_CORE	0b100
 
 struct Http http_conf;
 static char		spotify_auth_content[SPOTIFY_AUTH_CONTENT_SIZE];
@@ -644,12 +645,17 @@ void NetEventHandler(struct StateS *s,\
 		(SUPERSTATE(*s->state) != ESP8SS_STATION_CREDENTIALS) &&\
 		(SUPERSTATE(*s->nx_state) == ESP8SS_READY)) 
 	{
-		if (internal_events & WEATHER_UPDATE_EVENT) {
-			internal_events &= ~WEATHER_UPDATE_EVENT;
+		if (internal_events & WEATHER_UPDATE_EVENT_CORE) {
+			internal_events &= ~WEATHER_UPDATE_EVENT_CORE;
 			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
 			*client_id = LOCATION;
-		}
-		else if(internal_events & SPOTIFY_UPDATE_EVENT) {
+
+		} else if (internal_events & WEATHER_UPDATE_EVENT) {
+			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
+			internal_events &= ~WEATHER_UPDATE_EVENT;
+			internal_events = WEATHER_UPDATE_EVENT_CORE;
+
+		} else if(internal_events & SPOTIFY_UPDATE_EVENT) {
 			if(*spotify_auth_content == 0)
 				return;
 			

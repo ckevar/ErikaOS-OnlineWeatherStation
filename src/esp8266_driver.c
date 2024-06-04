@@ -614,7 +614,6 @@ static int16_t esp8266_http_parse(char *out_buff) {
 	char rest_method = HTTP_Method_UNKNOWN; 
 	uint16_t cursor, content_length, esp8_i, tickout;
 	
-
 	rest_method = esp8266_http_get_method();
 	if (rest_method == 0) 
 		return -1;
@@ -804,7 +803,7 @@ static int16_t esp8266_wait_for_IPData(char *out_buff, const int16_t content_len
 }
 
 static uint8_t check_on_ipdata(uint8_t *ipd_status, char *buff_link) {
-	static uint16_t content_length = 0;
+	static int16_t content_length = 0;
 
 	switch(*ipd_status) {
 	case IPData_DUMMY:
