@@ -86,15 +86,29 @@ char spotify_get_token(char *http, char **vals, uint16_t *sizes);
 								"Authorization: Bearer %s\r\n\r\n"
 
 enum {
-	iSPOTIFY_SONG,
-	iSPOTIFY_ALBUM,
-	iSPOTIFY_X0,
 	iSPOTIFY_ARTIST,
+	iSPOTIFY_SONG,
+	iSPOTIFY_PROGRESS,
+	iSPOTIFY_DURATION,
+	iSPOTIFY_TIME,
 	SPOTIFY_TRACK_COUNT
 };
 
+#define SPOTIFY_PROGRESS_OFFSET	2
+#define SPOTIFY_PROGRESS_DELIM	','
+
+#define SPOTIFY_ARTIST_OFFSET	3
+#define SPOTIFY_ARTIST_DELIM	'"'
+
+#define SPOTIFY_SONG_OFFSET		3
+#define SPOTIFY_SONG_DELIM		'"'
+
+#define SPOTIFY_DURATION_OFFSET	2
+#define SPOTIFY_DURATION_DELIM	','
+
+#define SPOTIFY_TIME_OFFSET		2
+#define SPOTIFY_TIME_DELIM		','
+
 char spotify_get_track(char *json, char **vals, uint16_t *sizes);
-
-
 
 #endif

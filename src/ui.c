@@ -396,11 +396,11 @@ void UI_writeWeatherCurrTemp(char *curr_temp) {
 void UI_setTime(char *timezone, char *time) {
     time_t epochs;
     struct tm *time_info;
-    char buff[10];
+    char buff[8];
     
     epochs = atoi(time) + atoi(timezone);
     time_info = localtime(&epochs);
-    strftime(buff, 10, "%I:%M%p", time_info);
+    strftime(buff, 8, "%I:%M%p", time_info);
 
     WPrintLog(&weather_ui[REQ_TIME], buff);
 }
@@ -408,6 +408,26 @@ void UI_setTime(char *timezone, char *time) {
 void UI_set_track(char *msg) {
 	LCD_DrawFullRect(SPOTIFY_INFO_X, SPOTIFY_INFO_Y, 300, 8);
 	WPrintLog(&weather_ui[SPOTIFY_STATUS], msg);
+}
+
+void UI_set_track_progress(char *progress_str, char *duration_str) {
+	uint32_t progress, duration;
+	progress = atoi(progress_str);
+	duration = atoi(duration_str);
+
+	LCD_SetColors(UI_CLEAN_PROGRESS_BAR_COLOR, UI_CLEAN_PROGRESS_BAR_COLOR);
+	LCD_DrawFullRect(SPOTIFY_INFO_X, SPOTIFY_INFO_Y + 10, 286, 1);
+
+	if (duration < progress) {
+		LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);	
+		return;
+	}
+
+	progress = (progress * 286) / duration;
+
+	LCD_SetColors(UI_PROGRESS_BAR_COLOR, UI_PROGRESS_BAR_COLOR);
+	LCD_DrawFullRect(SPOTIFY_INFO_X, SPOTIFY_INFO_Y + 10, progress, 1);
+	LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);	
 }
 /*******************************************************/
 
@@ -422,7 +442,8 @@ void UI_SettingsOff(void) {
 }
 /*******************************************************/
 
-void UI_WriteState(char *str){
+void UI_WriteState(char *str) {
+	LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
 	LCD_DrawFullRect(5, 228, 300, 8);
 	WPrintLog(&weather_ui[STATE_DEV_STR], str);	
 }

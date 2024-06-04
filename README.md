@@ -45,7 +45,16 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
 - __Network__, triggered each 80ms, runs the web client or the web servers upon request of the previous tasks.
 
-  The Fig 1. shows the overall FSM of the network 
+  The ESP8266 (ESP8) works on request of AT commands, a host sends a command such as: 
+
+  ```
+  Host: AT+CWMODE=3\r\n
+  ESP8: AT+CWMODE=3\r\n
+  ESP8: \r\n
+  ESP8: OK\r\n
+  ```
+
+  
 
 ```mermaid
 ---
@@ -63,6 +72,65 @@ READY --> SuperState : x_update | wifi_supplicant | spotify
 note left of SuperState : = INITIAL_SETUP, NETSTATUS, CLIENT, SERVER, AP
 
 ```
+
+```mermaid
+---
+title: Fig. 2 - Initial Setup Super State
+---
+stateDiagram-v2 
+direction TB
+state LUT_OK <<choice>>
+[*] --> INITIAL_SETUP
+state INITIAL_SETUP {
+direction LR
+[*] --> RESTART : LUT(prev_state)
+RESTART --> [*]
+[*] --> CHECK_DEV
+[*] --> CHECK_DEV : (ready & RESTART) | err & (STATION_MODE | MULTI_CONN)
+CHECK_DEV --> [*]
+[*] --> STATION_MODE : ok & CHECK_DEV
+STATION_MODE -->  [*]
+[*] --> MULTI_CONN : ok & STATION_MODE
+MULTI_CONN --> [*]
+}
+
+LUT_OK --> NETSTATUS : ok & MULTI_CONN
+LUT_OK --> INITIAL_SETUP
+
+ON_HOLD --> LUT_OK 
+INITIAL_SETUP --> ON_HOLD
+ON_HOLD --> ERROR : err
+
+ERROR --> INITIAL_SETUP 
+```
+
+```mermaid
+---
+title: Fig. 2 - Initial Setup Super State
+---
+stateDiagram-v2 
+direction LR
+state LUT_OK <<choice>>
+state NETSTATE {
+direction LR
+[*] --> IFCONFIG
+IFCONFIG --> [*]
+[*] --> NETSTAT
+NETSTAT --> [*]
+[*] --> NETKILL : ok
+NETKILL -->  [*]
+}
+
+LUT_OK --> NETSTAT : ok | ready
+LUT_OK --> NESTATUS : ok & MULTI_CONN
+ON_HOLD --> LUT_OK 
+INITIAL_SETUP --> ON_HOLD
+ON_HOLD --> ERROR : error
+
+ERROR --> INITIAL_SETUP : LUT(prev_state)
+```
+
+
 
  ## Future Improvements
 

@@ -25,6 +25,7 @@ struct Http http_conf;
 static char		spotify_auth_content[SPOTIFY_AUTH_CONTENT_SIZE];
 static int16_t	spotify_code;
 static uint8_t internal_events = 0;
+static char timezone[7];
 
 static void app_spotify_conf(uint8_t *success, char *http, void *arg) {
 
@@ -255,7 +256,8 @@ static void OWAPI_process_result(uint8_t *success, char *tmp, void *arg) {
     /* Request Time */
     *(weather[iOWAPI_TIMEZONE] + sizes[iOWAPI_TIMEZONE]) = 0;
     *(weather[iOWAPI_TIME] + sizes[iOWAPI_TIME]) = 0;
-    UI_setTime(weather[iOWAPI_TIMEZONE], weather[iOWAPI_TIME]);
+	memcpy(timezone, weather[iOWAPI_TIMEZONE], sizes[iOWAPI_TIMEZONE]);
+    UI_setTime(timezone, weather[iOWAPI_TIME]);
 
 	*success = 0;
 }
@@ -303,6 +305,11 @@ static void spotify_track_processor(uint8_t *success, char *http, void *arg) {
 	
 	*(track_ptr[iSPOTIFY_SONG] + sizes[iSPOTIFY_SONG]) = 0;
 	*(track_ptr[iSPOTIFY_ARTIST] + sizes[iSPOTIFY_ARTIST]) = 0;
+	*(track_ptr[iSPOTIFY_PROGRESS] + sizes[iSPOTIFY_PROGRESS]) = 0;
+	*(track_ptr[iSPOTIFY_DURATION] + sizes[iSPOTIFY_DURATION]) = 0;
+	*(track_ptr[iSPOTIFY_TIME] + 10) = 0;
+
+	UI_set_track_progress(track_ptr[iSPOTIFY_PROGRESS], track_ptr[iSPOTIFY_DURATION]);
 
 	sizes[iSPOTIFY_SONG] = snprintf(track_info, TRACK_INFO_SIZE, "%s:%s",\
 			track_ptr[iSPOTIFY_ARTIST], track_ptr[iSPOTIFY_SONG]);
@@ -311,6 +318,7 @@ static void spotify_track_processor(uint8_t *success, char *http, void *arg) {
 		track_info[TRACK_INFO_SIZE - 1] = 0;
 
 	UI_set_track(track_info);
+	UI_setTime(timezone, track_ptr[iSPOTIFY_TIME]);
 
 	*success = 0;
 }
@@ -600,6 +608,11 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 				client_id = SPOTIFY_AUTH;
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 			}
+			else if (esp8_status.http == HTTP_200) {
+				if(SUBSTATE(*state->nx_state) == ESP8S_CLOSE) {
+					*state->nx_state = MKSTATE(ESP8SS_READY, 0);
+				}
+			}
 		}
 		// break;
     }   
@@ -637,8 +650,11 @@ void NetEventHandler(struct StateS *s,\
 			*client_id = LOCATION;
 		}
 		else if(internal_events & SPOTIFY_UPDATE_EVENT) {
+			if(*spotify_auth_content == 0)
+				return;
+			
 			internal_events &= ~SPOTIFY_UPDATE_EVENT;
-			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
+			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_RMALLOC);
 			*client_id = SPOTIFY;
 
 		}

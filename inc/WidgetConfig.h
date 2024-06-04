@@ -70,6 +70,7 @@ void UI_setWeatherIcon(unsigned short *iconID);
 void UI_writeWeatherCurrTemp(char *curr_temp);
 void UI_setTime(char *timezone, char *time);
 void UI_set_track(char *track);
+void UI_set_track_progress(char *progress, char* duration);
 
 void UI_SettingsOn(void);
 void UI_SettingsOff(void);

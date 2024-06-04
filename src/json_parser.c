@@ -24,7 +24,7 @@ char *json_get_value_ptr(char *json, char *key, unsigned short key_len) {
 			if (memcmp(json, key, key_len) == 0)
 				return json + key_len + 2;
 			
-			json += key_len + 1;
+			json += key_len - 1;
 		}
 		json++;
 	}

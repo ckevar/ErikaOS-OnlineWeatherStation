@@ -7,6 +7,6 @@ INC_DIR:=inc ui/inc img/inc
 SRC:=$(foreach dir, $(SRC_DIR), $(wildcard $(dir)/*.c))
 INC:=$(foreach dir, $(INC_DIR), -I$(dir))
 
-CFLAGS += $(INC)
+CFLAGS += $(INC) -g3
 APP_SRCS += $(SRC)
 
