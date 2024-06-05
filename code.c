@@ -103,7 +103,7 @@ TASK(LCD_IN) {
 }
 TASK(ESP8266_POLL) {
 	if (esp8_status.cmd == ESP8_UNKNOWN) {
-		esp8266_response();
+		esp8266_poll();
 	}
 	STM_EVAL_LEDToggle(LED4);
 

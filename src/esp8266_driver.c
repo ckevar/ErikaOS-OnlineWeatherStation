@@ -268,7 +268,6 @@ void esp8266_cipstart(char *type, char linkid, char *host, unsigned short len) {
 	tmp[ESP8266_AT_CIPSTART_LINK] = linkid + 48;
 	esp8266_dma_cmd_mul_param(tmp, ESP8266_AT_CIPSTART_LEN,\
 		host, len);
-	esp8_status.http = HTTP_XXX;
 }
 
 void esp8266_set_CIPSEND(char *len_of_data, unsigned short len) {
@@ -343,9 +342,12 @@ static void esp8266_rx_N_pop(uint16_t it) {
 /*
  * gets method on the html arrival data, only GET and POST supported
  */
+
+char tmp[10];
 static unsigned char esp8266_http_get_method(void) {
 	unsigned char get_method = 0, post_method = 0;
 	unsigned char no_method = 0;
+	memcpy(tmp, esp8.read, 10);
 	
 	while(*esp8.read != ' ') {
 		switch(*esp8.read) {
@@ -611,7 +613,7 @@ static void http_get_code(void) {
 #define MAX_TICKOUT     2048    // Experimental value
 
 static int16_t esp8266_http_parse(char *out_buff) {
-	char rest_method = HTTP_Method_UNKNOWN; 
+	enum HTTPMethods rest_method = HTTP_Method_UNKNOWN; 
 	uint16_t cursor, content_length, esp8_i, tickout;
 	
 	rest_method = esp8266_http_get_method();
@@ -842,7 +844,7 @@ static uint8_t check_on_ipdata(uint8_t *ipd_status, char *buff_link) {
 #define RESET_MATCH()   esp8266_rx_pop(); \
                         memset(counter, 0, ESP8_RESP_COUNT)
 
-void esp8266_response(void) {
+void esp8266_poll(void) {
     static uint8_t counter[ESP8_RESP_COUNT] = {0};
 	static uint8_t ipdata_status = IPData_UKNOWN;
 	static char *buff_link;
@@ -926,13 +928,12 @@ void esp8266_response(void) {
                 RESET_MATCH();
                 esp8_status.cmd = ESP8_UNKNOWN;
 				ipd_len = esp8266_ipd_parse(buff_link);
+                buff_link = ESP8266_link.buffXlink[*buff_link];
                 if (ipd_len > 0 && ipd_len <= 1000) {
-                    buff_link = ESP8266_link.buffXlink[*buff_link];
                     ipdata_status = IPData_OK2PARSE;
                     return;
                 } else if (ipd_len > 1000) {
 					// Just to buy some time
-                    buff_link = ESP8266_link.buffXlink[*buff_link];
 					ipdata_status = IPData_DUMMY;
 					return;
 				}

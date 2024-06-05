@@ -185,6 +185,6 @@ void esp8266_send_html(void);
 void esp8266_clean_link_buff(char link);
 void esp8266_purge_link_buff(void);
 
-void esp8266_response(void);
+void esp8266_poll(void);
 
 #endif

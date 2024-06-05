@@ -21,13 +21,13 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
 - __Weather Update__
 
-  Triggered each 10 minutes, it triggers an internal event that invokes a change in the client of the task _Network_ to update the weather information. From experiments, the temperature information doesn't get updated faster than 10 minutes. So, the server only gives repetitive information when requested every 45s or 180s.
+  Based on the OpenWeatherMap's [API doc](https://openweathermap.org/api/one-call-3) the data is updated every 10 minutes , so this task has a ___10 minutes period___ that triggers an internal event invoking a change in the client of the task _Network_ to update the weather information, this closes the SSL connection (if open) for Spotify. 
 
     
 
 - __Spotify Update__
 
-  Triggered each 20s, it triggers an internal event that invokes a change in the client of the task _Network_ in order to fetch the Spotify player information. It's being seen that establishing a SSL connection to [api.spotify.com:443](https://api.spotify.com) on the ESP8266 takes 5 seconds + 2 seconds of transmitting the data through UART to the STM32 and parsing it. Spotify replies a minimum of ~7Kbytes: 1Kbytes of HTTP/1.1 header + 6Kbytes of JSON data. So, it's 7 seconds only one request. This can be reduce by not closing the SSL connection, unfortunately this option wasn't not explore in this project. The other option is to speed the UART, but it was not a good idea because the ESP8266 got "bricked".
+  Triggered each __2s__, it triggers an internal event that invokes a change in the client of the task _Network_ in order to fetch the Spotify player information.  Once the token is acquired, the automaton on the STM32 requests a SSL connection to [api.spotify.com:443](https://api.spotify.com) and it does not close it until a _weather update_ event asks for weather information. This link remains open due to establishing a SSL connection takes ~5 seconds on the ESP8266. Keep in mind that Spotify sends minimum 7Kbytes of HTTP data (HTTP header + JSON) when a track is being played and there are songs that can reach 13Kbytes, transmitting these data and parsing it takes ~2 seconds. So, if the goal is to fetch the most recent information from the player open and closing the SSL connection is not the most suitable option, moreover, open and closing creates an overhead in the ESP8266 and in the Spotify's servers (which I don't think it's a big deal but if it were a smaller server, it would be a different story) 
 
   
 

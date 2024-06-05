@@ -22,6 +22,9 @@
 #define WEATHER_UPDATE_EVENT		0b010
 #define WEATHER_UPDATE_EVENT_CORE	0b100
 
+#define SPOTIFY_AUTH_EMPTY			0
+#define SPOTIFY_AUTH_NON_EMPTY		' '
+
 struct Http http_conf;
 static char		spotify_auth_content[SPOTIFY_AUTH_CONTENT_SIZE];
 static int16_t	spotify_code;
@@ -375,14 +378,14 @@ void server_function(struct StateS *s, enum ServersID server_id) {
 			socket.callback = &app_spotify_conf;
 			socket.arg = (void *)(spotify_auth_content + spotify_code);
 			server_state = SERVER_RUNNING;
-			*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) = 0;
+			*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) = SPOTIFY_AUTH_EMPTY;
 			break;
 		}
 		
 		// case SERVER_RUNNING:
 		fsm_server(s, &socket);
 
-		if(*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > ' ' && \
+		if(*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > SPOTIFY_AUTH_NON_EMPTY && \
 			SUBSTATE(*s->state) == ESP8S_LISTENING)
 		{
 			*s->nx_state = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART); 
@@ -472,16 +475,20 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 		case CLIENT_EXEC:
 			fsm_client(state, &sock);
 		
-			if(SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
+			if(SUPERSTATE(*state->nx_state) == ESP8SS_READY
+				|| esp8_status.http == HTTP_401) 
+			{
 				if (*spotify_token > ' ') {
 					client_id = SPOTIFY_PLAYER;
-				} else if (*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > ' ') {
+					*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
+
+				} else if (*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > SPOTIFY_AUTH_NON_EMPTY) {
 					client_id = SPOTIFY_AUTH;
+					*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 				}
 				else {
 					client_id = LOCATION;
 				}
-
 				client_state = CLIENT_CONF;
 			}
 		}
@@ -600,7 +607,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 				if (spotify_code < 0 ||\
 					spotify_code > SPOTIFY_AUTH_CONTENT_SIZE)
 				{
-					memset(spotify_auth_content, 0,\
+					memset(spotify_auth_content, SPOTIFY_AUTH_EMPTY,\
 							SPOTIFY_AUTH_CONTENT_SIZE);
 					client_id = LOCATION;
 					break;
@@ -609,7 +616,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 				client_id = SPOTIFY_AUTH;
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 			}
-			else if (esp8_status.http == HTTP_200) {
+			else if (esp8_status.http == HTTP_200 || esp8_status.http == HTTP_204) {
 				if(SUBSTATE(*state->nx_state) == ESP8S_CLOSE) {
 					*state->nx_state = MKSTATE(ESP8SS_READY, 0);
 				}
@@ -651,12 +658,14 @@ void NetEventHandler(struct StateS *s,\
 			*client_id = LOCATION;
 
 		} else if (internal_events & WEATHER_UPDATE_EVENT) {
-			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
+			if (*spotify_auth_content > SPOTIFY_AUTH_NON_EMPTY) {
+				*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
+			}
 			internal_events &= ~WEATHER_UPDATE_EVENT;
 			internal_events = WEATHER_UPDATE_EVENT_CORE;
 
 		} else if(internal_events & SPOTIFY_UPDATE_EVENT) {
-			if(*spotify_auth_content == 0)
+			if(*spotify_auth_content == SPOTIFY_AUTH_EMPTY)
 				return;
 			
 			internal_events &= ~SPOTIFY_UPDATE_EVENT;

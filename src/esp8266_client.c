@@ -55,6 +55,7 @@ void fsm_client(struct StateS *state, struct Socket *so) {
         break;
 
     case ESP8S_CWRITE:
+		esp8_status.http = HTTP_XXX;
 		esp8266_req_HTML(so->request, atoi(so->rsize));
         UI_WRITESTATE("Request ", 8, so->domain_port, so->dsize); 
         break;
