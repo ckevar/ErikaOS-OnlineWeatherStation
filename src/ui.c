@@ -180,7 +180,7 @@ void UI_init(void) {
 	
 	/* Init Touchscreen */
 	IOE_Config();
-	InitTouch(-0.1247, 0.0650, -349, 5);
+	InitTouch(-0.1247, 0.0650, -340, 5);
 
 	STM32f4_Discovery_LCD_Init();
 	// LCD_LOG_Init();

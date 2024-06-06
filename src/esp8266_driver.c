@@ -528,7 +528,7 @@ static void esp8266_http_get_Content(char *content, unsigned short len) {
 	// copied in two chuncks.
 	rns = esp8.eof - esp8.read + 1;
 
-	if (len > rns) {
+	if (len >= rns) {
 		memcpy(content, esp8.read, rns);
 		memset(esp8.read, 0, rns);
 		esp8.read = esp8.data;
@@ -542,6 +542,12 @@ static void esp8266_http_get_Content(char *content, unsigned short len) {
 	content += len;
 
 	rns = 0;
+	/* When the webser is throwing too much data, it arrives in chunks
+	 * and each chunk has a header, so far that header was being ingnored
+	 * and count as part of the content, so when the content is copied 
+	 * out there are some remaining actual content that has to be copied
+	 * as well, for future, the header of the chunks has to be parsed,
+	 * so far this copying of the remaining works */
 	while (*esp8.read != 0 && rns < 4) {
 		rns = ((*esp8.read == '\r') || (*esp8.read == '\n')) \
 			  ? rns + 1 \
@@ -691,16 +697,27 @@ static int16_t esp8266_http_parse(char *out_buff) {
 static unsigned short esp8266_ipd_parse(char *out_buff) {
 	unsigned char link_queue;
 	unsigned short ipd_len = 0;
-    char *multi_conn, link;
+    char link;
 
-	link_queue = ESP8266_link.n_links;
-    
+	link_queue = 0;
+
     // FIXME: *esp.read can lead to segmentation fault.
 	if (*(esp8.read + 2) == ',') {
 		// >> This is for Multiple Connection <<
 		
 		// "-47" because ascii "1" (=49), the link 0 wil be 1
-		ESP8266_link.open[link_queue] = *(esp8.read + 1) - 47; 
+		link = *(esp8.read + 1) - 47;
+
+		while(ESP8266_link.open[link_queue] != link && link_queue < 4) 
+			link_queue++;
+		
+		if (link_queue == 4) {
+			link_queue = ESP8266_link.n_links;
+			ESP8266_link.n_links = (ESP8266_link.n_links + 1) % 4;
+		}
+		
+		ESP8266_link.open[link_queue] = link; 
+		
 
 		// includes both commas: ",<link_id:8bits>,"
 		esp8266_rx_N_pop(3);
@@ -709,12 +726,6 @@ static unsigned short esp8266_ipd_parse(char *out_buff) {
 		// >> This is for Single Connection <<
 		ESP8266_link.open[link_queue] = 1;  	
 		esp8266_rx_pop(); 	// includes only one comma: ","
-	}
-
-	ESP8266_link.n_links++;
-
-	if (ESP8266_link.n_links > 4) {
-		ESP8266_link.n_links = 0;
 	}
 
 	*out_buff = ESP8266_link.open[link_queue] - 1;
@@ -792,8 +803,11 @@ static int16_t esp8266_wait_for_IPData(char *out_buff, const int16_t content_len
 	tickout = 0;
     esp8_i = esp8.read - esp8.data;
     esp8_i = (esp8_i + content_length) % ESP8266_BUFF_RX_LEN;
-		
-    while((*(esp8_i + esp8.data - 1) == 0) && (tickout < MAX_TICKOUT))
+	
+	if (!esp8_i) 
+		esp8_i = esp8.size;
+
+    while((*(esp8.data + esp8_i - 1) == 0) && (tickout < MAX_TICKOUT))
 		tickout++;
 
 	if(tickout == MAX_TICKOUT)

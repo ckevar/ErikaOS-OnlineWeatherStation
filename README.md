@@ -21,25 +21,45 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
 - __Weather Update__
 
-  Based on the OpenWeatherMap's [API doc](https://openweathermap.org/api/one-call-3) the data is updated every 10 minutes , so this task has a ___10 minutes period___ that triggers an internal event invoking a change in the client of the task _Network_ to update the weather information, this closes the SSL connection (if open) for Spotify. 
+  Based on the OpenWeatherMap's [API doc](https://openweathermap.org/api/one-call-3) the data is updated every 10 minutes , so this task has a __10 minutes period__ that triggers an internal event invoking a change in the client of the task _Network_ to update the weather information, this closes the SSL connection (if open) for Spotify. 
+
+  _code: src/app.c_
 
     
 
 - __Spotify Update__
 
-  Triggered each __2s__, it triggers an internal event that invokes a change in the client of the task _Network_ in order to fetch the Spotify player information.  Once the token is acquired, the automaton on the STM32 requests a SSL connection to [api.spotify.com:443](https://api.spotify.com) and it does not close it until a _weather update_ event asks for weather information. This link remains open due to establishing a SSL connection takes ~5 seconds on the ESP8266. Keep in mind that Spotify sends minimum 7Kbytes of HTTP data (HTTP header + JSON) when a track is being played and there are songs that can reach 13Kbytes, transmitting these data and parsing it takes ~2 seconds. So, if the goal is to fetch the most recent information from the player open and closing the SSL connection is not the most suitable option, moreover, open and closing creates an overhead in the ESP8266 and in the Spotify's servers (which I don't think it's a big deal but if it were a smaller server, it would be a different story) 
+  Triggered each __2s__, it triggers an internal event that invokes a change in the client of the task _Network_ in order to fetch the Spotify player information.  Once the token is acquired, the automaton on the STM32 requests a SSL connection to [api.spotify.com:443](https://api.spotify.com) and it does not close it until a _weather update_ event asks for weather information. This link remains open due to establishing a SSL connection takes ~5 seconds on the ESP8266. Keep in mind that Spotify sends minimum 7Kbytes of HTTP data (1Kbyte: HTTP header + 6Kbyte: JSON) when a track is being played and there are songs that can reach 13Kbytes, transmitting these data and parsing it takes ~2 seconds. So, if the goal is to fetch the most recent information from the player open and closing the SSL connection is not the most suitable option, moreover, open and closing creates an overhead in the ESP8266 and in the Spotify's servers (which I don't think it's a big deal but if it were a smaller server, it would be a different story).
+
+  In order to reduce the amount of data coming from Spotify, we have modify the query request, so instead of being only:
+
+  ```bash
+  GET api.spotify.com/v1/me/player/currently-playing
+  ```
+
+  the available market was placed
+
+  ```bash
+  GET api.spotify.com/v1/me/player/currently-playing?market=IT # IT stands for Italy
+  ```
+
+  This request decreased the data size down to ~4Kbytes (1KByte: HTTP Header + 3Kbyte: JSON).
+
+  _code: src/app.c_
 
   
 
 - __ESP8266 Poll__
 
-  Triggered each 40 ms, parses the incoming data of the ESP8266. 40ms has being chosen because initially the circular buffer where the DMA is placing the incoming data was 1024 bytes size, and at 115200 bauds with 1 start bit  and 1 end bit on the UART, 10240 bits will fill the buffer in 88ms, to avoid overlapping data, it's better to empty it as soon as possible,  so (by Nyquist) 40ms will do the job. that buffer dimension works perfect when fetching weather information because the data barely reaches 1Kbytes. It's a different story for Spotify where sometimes it throws 13Kbytes for a song. So, the initial buffer dimension isn't enough. But choosing a larger period will make other processes slowly, like when settings up the ESP8266,  are average 14 bytes size (~1.2ms). So, the current mechanism doesnt try to empty the buffer but just wait for the content of the HTTP, the header containing larger amount of cookies is discarded.  
+  Triggered each __40 ms__, parses the incoming data of the ESP8266. 40ms has being chosen because initially the circular buffer where the DMA is placing the incoming UART data was 1024 bytes size, and at 115200 bauds with 1 start bit  and 1 end bit on the UART, 10240 bits will fill the buffer in 88ms, to avoid overlapping data, it's better to empty it as soon as possible,  so (by Nyquist) 40ms will do the job. that buffer dimension works perfect when fetching weather information because the data barely reaches 1Kbytes. It's a different story for Spotify where sometimes it throws 13Kbytes for a song. So, the initial buffer dimension isn't enough. But choosing a larger period will make other processes slowly, like when setting up the ESP8266, the used commands are averagely 14 bytes size (~1.2ms to transmit). So, the current mechanism does not try to empty the buffer but just wait for the content of the HTTP, the header is almost discarded, the only fields of interest are the _HTTP Method_, the _HTTP Status Code_ and the _Content-Length_. Right now the buffer size is 8Kbytes and 40ms works perfectly.
 
-   
+   _code: src/esp8266_driver.c_
 
 - __LCD In__
 
-  Triggered each 20 ms, it checks if the LCD has being touched. An event-triggered filter was implemented in order to reduce the noise of the coordinates when touched. The following figure shows the raw data on the x axis when touched. Y axis does not need to be filtered because our icon size are 30 pixels and the standard deviation of the Y axis is smaller than that.
+  Triggered each 20 ms, it checks if the LCD has being touched. An event-triggered filter was implemented in order to reduce the noise of the coordinates when touched. The following figure fig.1 shows the raw data after calibration on the x and y-axis. As seen the x-axis data ranges ~200 pixels. Note in fig.1 negative pixels are shown because this data was not constraint to the dimensions of screen; however, constraint functions wont reduce the noise, the noise is kept over the whole touch panel.
+
+  ![image](data/img/touch_screen_raw_data.png)
 
   
 

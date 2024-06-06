@@ -138,13 +138,13 @@ unsigned char  Lcd_Touch_Calibration()
  * author: C. Alvarado
  *
  * { */
-#define ALPHA10_X   40.0 // alpha1 - alpha0
+#define ALPHA10_X   5.999 // alpha1 - alpha0
 #define ALPHA1_X    0.001
-#define SIGMA_X     750.0
+#define SIGMA_X     260.0
 #define DELTA_T		0.02
 
 static void state_update_extended(int *x, uint8_t *trigger) {
-    volatile static int16_t x_estimated = 160;
+    volatile static int16_t x_estimated = 0;
     static float t = 0.0;
     float alpha_x;
 	
@@ -152,7 +152,7 @@ static void state_update_extended(int *x, uint8_t *trigger) {
 		t = t + DELTA_T;
 	} else {
 		t = 0.0;
-		x_estimated = 160;
+		x_estimated = 0;
 	}
 
     *trigger = 1;
@@ -163,9 +163,11 @@ static void state_update_extended(int *x, uint8_t *trigger) {
 }
 
 /* } */
+uint16_t x[512];
 
 unsigned char  GetTouch_TC_Async(int *xs, int *ys) {
     static uint8_t trigger = 0;
+	static uint16_t i = 0;
 	TS_STATE *pstate = NULL;
 
     pstate = IOE_TS_GetState();
@@ -174,7 +176,10 @@ unsigned char  GetTouch_TC_Async(int *xs, int *ys) {
 	    /*Read AD convert result*/
 	    *xs = IOE_TS_Read_X();
 	    *ys = IOE_TS_Read_Y();
-
+		x[i] = *xs;
+		i++;
+		if(i == 512)
+			i = 0;
         /* State Update Filtering */
         state_update_extended(xs, &trigger);
 
