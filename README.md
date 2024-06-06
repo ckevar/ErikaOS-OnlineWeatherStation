@@ -57,16 +57,38 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
 - __LCD In__
 
-  Triggered each 20 ms, it checks if the LCD has being touched. An event-triggered filter was implemented in order to reduce the noise of the coordinates when panel gets touched. The following figure fig.1 shows the raw data after calibration on the x and y-axis. As seen the x-axis data ranges ~200 pixels. Note in fig.1 negative pixels are shown because this data was not constraint to the dimensions of the screen; however, constraint functions won't reduce the noise, the noise is kept over the whole touch panel.
+  Triggered each 20 ms, it checks if the LCD has being touched. An event-triggered filter was implemented in order to reduce the noise of the coordinates when the panel gets touched. The figure Fig.1 shows the x axis pixels upon touching the Spotify Icon button for 10.24 seconds (512 samples). As seen the x-axis data ranges from 200px to 280px,  falling only 211 samples  within the icon's dimension out of 512 samples.
 
-  ![image](data/img/touch_screen_raw_data.png)
+  ![image](data/img/touch_screen_x_data.png)
 
-  Some noise can be ignored whilst the double of standard deviation is as smaller as the button's dimension, in this case a button covers 30x30 pixels. In this case the standard deviations are the follow for each axis.
-  $$\sigma_x = 70.38px\\
-  \sigma_y = 3.98px$$
-  Y-axis doesn't need a filter as long as the touched coordinate is close to centre of the button. However, X-axis data spreads 107.38px side wise around the touched point, this axis does need filter. 
+  Some noise can be allowed whilst the double of standard deviation is as smaller as the button's dimension, in this case a button covers 30x30 pixels and the standard deviations of the touchscreen are the followings for each axis:
+  $$ {sdasd}
+  \sigma_x = 22.88px, \sigma_y = 3.98px
+  $$
+  Y-axis doesn't need a filter as long as the touched coordinate is close to centre of the button, while the x-axis does need to be filtered.
 
-  There's an [application report](https://www.ti.com/lit/an/sbaa155a/sbaa155a.pdf?ts=1717523545771&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FTSC2046E%253FkeyMatch%253DTSC2046EIRGVR%2526tisearch%253Dsearch-everything%2526usecase%253DOPN-ALT) by W. Fang where several non linear filters are listed. 
+  There's an [application report](https://www.ti.com/lit/an/sbaa155a/sbaa155a.pdf?ts=1717523545771&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FTSC2046E%253FkeyMatch%253DTSC2046EIRGVR%2526tisearch%253Dsearch-everything%2526usecase%253DOPN-ALT) by W. Fang where 4 non linear filters are suggested for resistive touchscreens: 
+
+  - Average with _N = 4_  samples.
+
+  - Weighted Average with _N = 4_ samples and _M = 2_ (meaning it drops 2 samples).
+
+  - Middle Value with _N = 3_ samples.
+
+  - Average the closest with _N = 3_ samples.
+
+  They were all tested using the raw data from Fig.1 and the results are shown in Fig.2. Two additional filteres were explored, the [State Update Equation](https://www.kalmanfilter.net/alphabeta.html) with a fixed $\alpha$ and another with a $\alpha(t)$:
+  $$
+  \hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(z_n-\hat{x}_{n,n-1})
+  $$
+   and
+  $$
+  \hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(t)(z_n-\hat{x}_{n,n-1})\\
+  \alpha(t) = \alpha_1+\frac{\alpha_0-\alpha_1}{\sigma t + 1}
+  $$
+  
+
+  
 
 - __Network__, triggered each 80ms, runs the web client or the web servers upon request of the previous tasks.
 
