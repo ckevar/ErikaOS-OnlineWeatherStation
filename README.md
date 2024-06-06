@@ -75,8 +75,9 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
   - Average the closest with _N = 3_ samples.
 
-  They were all tested using the raw data from Fig.1 and the results are shown in Fig.2. Two additional filteres were explored, the [State Update Equation](https://www.kalmanfilter.net/alphabeta.html) with a fixed $\alpha$ and another with a $\alpha(t)$:
-  $$\hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(z_n-\hat{x}_{n,n-1})$$
+  They were all tested using the raw data from Fig.1 and the results are shown in Fig.2. Two additional filteres were explored, the [State Update Equation](https://www.kalmanfilter.net/alphabeta.html) with a fixed $\alpha$ and another with $\alpha(t)$:
+  
+  $$\hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(z_n-\hat{x}_{n,n-1})   (1)$$
    and
   $$\hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(t)(z_n-\hat{x}_{n,n-1})$$
   $$\alpha(t) = \alpha_1+\frac{\alpha_0-\alpha_1}{\sigma t + 1}$$
