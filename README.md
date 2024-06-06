@@ -62,10 +62,8 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
   ![image](data/img/touch_screen_raw_data.png)
 
   Some noise can be ignored whilst the double of standard deviation is as smaller as the button's dimension, in this case a button covers 30x30 pixels. In this case the standard deviations are the follow for each axis.
-  $$
-  \sigma_x = 70.38px\\
-  \sigma_y = 3.98px
-  $$
+  $$\sigma_x = 70.38px\\
+  \sigma_y = 3.98px$$
   Y-axis doesn't need a filter as long as the touched coordinate is close to centre of the button. However, X-axis data spreads 107.38px side wise around the touched point, this axis does need filter. 
 
   There's an [application report](https://www.ti.com/lit/an/sbaa155a/sbaa155a.pdf?ts=1717523545771&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FTSC2046E%253FkeyMatch%253DTSC2046EIRGVR%2526tisearch%253Dsearch-everything%2526usecase%253DOPN-ALT) by W. Fang where several non linear filters are listed. 
