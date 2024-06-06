@@ -59,10 +59,12 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
   Triggered each 20 ms, it checks if the LCD has being touched. An event-triggered filter was implemented in order to reduce the noise of the coordinates when the panel gets touched. The figure Fig.1 shows the x axis pixels upon touching the Spotify Icon button for 10.24 seconds (512 samples). As seen the x-axis data ranges from 200px to 280px,  falling only 211 samples  within the icon's dimension out of 512 samples.
 
-  ![image](data/img/touch_screen_x_data.png)
+  ![image](data/img/touch_screen_x_data.png "Fig.1 Touch Screen x-axis data")
 
   Some noise can be allowed whilst the double of standard deviation is as smaller as the button's dimension, in this case a button covers 30x30 pixels and the standard deviations of the touchscreen are the followings for each axis:
-  $$\sigma_x = 22.88px, \sigma_y = 3.98px$$
+  $$ {sdasd}
+  \sigma_x = 22.88px, \sigma_y = 3.98px
+  $$
   Y-axis doesn't need a filter as long as the touched coordinate is close to centre of the button, while the x-axis does need to be filtered.
 
   There's an [application report](https://www.ti.com/lit/an/sbaa155a/sbaa155a.pdf?ts=1717523545771&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FTSC2046E%253FkeyMatch%253DTSC2046EIRGVR%2526tisearch%253Dsearch-everything%2526usecase%253DOPN-ALT) by W. Fang where 4 non linear filters are suggested for resistive touchscreens: 
@@ -75,12 +77,53 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
   - Average the closest with _N = 3_ samples.
 
-  They were all tested using the raw data from Fig.1 and the results are shown in Fig.2. Two additional filteres were explored, the [State Update Equation](https://www.kalmanfilter.net/alphabeta.html) with a fixed $\alpha$ and another with $\alpha(t)$:
+  They were all tested using the raw data from Fig.1 and the results are shown in Fig.2. Two additional filters were explored, the [State Update Equation](https://www.kalmanfilter.net/alphabeta.html) _(1)_ with a fixed $\alpha$ and another _(2)_ with $\alpha(t)$:
+
+  $$
+  \hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(z_n-\hat{x}_{n,n-1})\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,(1)
+  $$
+  and
+  $$
+  \hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(t)(z_n-\hat{x}_{n,n-1}) \,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,(2)
+  $$
+
+  $$
+  \alpha(t) = \alpha_1+\frac{\alpha_0-\alpha_1}{\sigma t + 1} | \alpha_0>\alpha_1>0 \and \sigma > 0\,\,\,\,\,\,\,\,(3)
+  $$
+
   
-  $$\hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(z_n-\hat{x}_{n,n-1})   (1)$$
-   and
-  $$\hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(t)(z_n-\hat{x}_{n,n-1})$$
-  $$\alpha(t) = \alpha_1+\frac{\alpha_0-\alpha_1}{\sigma t + 1}$$
+
+  ![image](data/img/filter_comparison.png "Filter Comparison")
+
+  In Fig.2, only a small window frame of 250ms is shown because pushing a button takes less than 1 second, so the purpose is to see which filter is the fastest one; since all filters kept the signal within the range of the button. Filters such as _Weighted Average_ and _Averaging the Closest_ are operating on the boundaries, discarded. On the other hand _State Update_ is the slowest among all, discarded as well, however _State Update_ with $\alpha(t)$ takes the signal to the button region in the second samples (20ms).
+
+  Equation _(2)_ is quite similar to a Kalman filter, but, instead $\alpha$ depending on the variance of the process and the measure, it only leads $\alpha_0$ to become $\alpha_1$ at the rate of $\sigma$ (_+1_ is to avoid division by zero). This is due that a large $\alpha$ have a fast response but performs poorly at removing noise (used when touched) while a small $\alpha$ performs good at removing noise but is really slow, so the idea behind it is to change $\alpha$ over time so the signal reaches the desired level as soon as possible and then removes the noise.  This is implemented in a way that the $t$ gets resetted when there's a touch:
+
+  ```c
+    1 #define ALPHA10_X   5.799 // alpha1 - alpha0                                     
+    2 #define ALPHA1_X    0.001                                                         
+    3 #define SIGMA_X     260.0                                                         
+    4 #define DELTA_T     0.02                                                         
+    5                                                                                   
+    6 static void state_update_extended(int *x, uint8_t *trigger) {
+    7     static int16_t x_estimated = 0;
+    8     static float t = 0.0;
+    9     float alpha_x;
+   10
+   11     if (*trigger) {                 
+   12         t = t + DELTA_T;
+   13     } else {
+   14         t = 0.0;     
+   15         x_estimated = 0; 
+   16     }                                                                              17                                                                                   
+   18     *trigger = 1;
+   19
+   20     alpha_x = ALPHA1_X + ALPHA10_X / (SIGMA_X * t + 1.0);                 
+   21     x_estimated = x_estimated + alpha_x * (*x - x_estimated);
+   22     *x = (int) x_estimated;
+   23 }  
+  ```
+
   
 
   

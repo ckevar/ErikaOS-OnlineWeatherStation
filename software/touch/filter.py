@@ -129,7 +129,7 @@ xmv = middle_value(x)
 xac = averaging_da_closest(x)
 xsu = state_update(x, 0.20)
 xsu2 = state_update2(x, 40.0, 0.001, 750.0)
-xsu3 = state_update2(x, 6.0, 0.001, 260.0)
+xsu3 = state_update2(x, 5.8, 0.001, 260.0)
 
 print("Calibrated, std = {}".format(np.std(x)))
 print("Average-4, std = {}".format(np.std(xa4)))

@@ -131,20 +131,21 @@ unsigned char  Lcd_Touch_Calibration()
  *          alpha_1, so the filter has a faster response but poor
  *          denoising ability. 
  *
- * alpha_1: The target alpha, it's the value that performes well over.
+ * alpha_1: The target alpha, it's the value that performs well over
+ *			time.
  * 
  * sigma:   The rate of decrease, how fast alpha0 is going to alpha1.
  *
  * author: C. Alvarado
  *
  * { */
-#define ALPHA10_X   5.999 // alpha1 - alpha0
+#define ALPHA10_X   5.799 // alpha1 - alpha0
 #define ALPHA1_X    0.001
 #define SIGMA_X     260.0
 #define DELTA_T		0.02
 
 static void state_update_extended(int *x, uint8_t *trigger) {
-    volatile static int16_t x_estimated = 0;
+    static int16_t x_estimated = 0;
     static float t = 0.0;
     float alpha_x;
 	
@@ -159,7 +160,7 @@ static void state_update_extended(int *x, uint8_t *trigger) {
 
     alpha_x = ALPHA1_X + ALPHA10_X / (SIGMA_X * t + 1.0);
     x_estimated = x_estimated + alpha_x * (*x - x_estimated);
-    *x = x_estimated;
+    *x = (int) x_estimated;
 }
 
 /* } */
