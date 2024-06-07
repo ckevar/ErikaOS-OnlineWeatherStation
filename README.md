@@ -5,7 +5,7 @@ It's a tiny monitor for you local weather and music player, meaning, it shows th
 
 Two web servers were built as well, (1) the WiFi supplicant that allows the user to connect to any Access Point and (2) the Spotify Authenticator to link a Spotify account. These servers run in different modes of the WiFi module, when as a supplicant, the module works as SoftAP and station so, the user can join the WiFi network **Erika Weather**, browse to [http://192.168.4.1/](http://192.168.4.1) and set the SSID and password of the desired network and wait for connection. As Spotify Authenticator, recommended to use only when there's an internet connection and browse to [http://your-esp8266-ip/spotify](), this provides the link that will authenticate the user's Spotify account and later it will automatically fetch the token.   
 
-You can skip this documentation and jump straight to the [compile](#Compile) section.
+You can skip this documentation and jump straight to the [compilation](#Compile) section.
 
 ## Hardware 
 
@@ -13,7 +13,7 @@ The main board is a _STM32f407-discovery_ using _std_ library mounted over a _di
 
 ## Firmware
 
-On the seconday board, ESP8266, the _ESP8266-IDF-ATV2.2.1.0_ is running, provided by Espressif, you can find in [this link](https://gist.github.com/ckevar/4275573daf5d2d4803346ab56bf4e0fe) how to install this firmware on the ESP8266. This firmware version is important in order to establish SSL connections, the ATv1.6.x supports SSL, but from tests, it's seen that [*.spotify.com:443]() is virtually hosted on Google, so the SSL uses SNI and the ATv1.6.x does not support SNI.
+On the secondary board, ESP8266, the _ESP8266-IDF-ATV2.2.1.0_ is running, provided by Espressif, you can find in [this link](https://gist.github.com/ckevar/4275573daf5d2d4803346ab56bf4e0fe) how to install this firmware on the ESP8266. This firmware version is important in order to establish SSL connections, the ATv1.6.x supports SSL, but from tests, it's seen that [*.spotify.com:443]() is virtually hosted on Google, so the SSL uses SNI and the ATv1.6.x does not support SNI.
 
 ---
 
@@ -51,7 +51,7 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
 - __ESP8266 Poll__
 
-  Triggered each __40 ms__, parses the incoming data of the ESP8266. 40ms has being chosen because initially the circular buffer where the DMA is placing the incoming UART data was 1024 bytes size, and at 115200 bauds with 1 start bit  and 1 end bit on the UART, 10240 bits will fill the buffer in 88ms, to avoid overlapping data, it's better to empty it as soon as possible,  so (by Nyquist) 40ms will do the job. that buffer dimension works perfect when fetching weather information because the data barely reaches 1Kbytes. It's a different story for Spotify where sometimes it throws 13Kbytes for a song. So, the initial buffer dimension isn't enough. But choosing a larger period will make other processes slowly, like when setting up the ESP8266, the used commands are averagely 14 bytes size (~1.2ms to transmit). So, the current mechanism does not try to empty the buffer but just wait for the content of the HTTP, the header is almost discarded, the only fields of interest are the _HTTP Method_, the _HTTP Status Code_ and the _Content-Length_. Right now the buffer size is 8Kbytes and 40ms works perfectly.
+  Triggered each __40 ms__, parses the incoming data of the ESP8266. 40ms has being chosen because initially the circular buffer where the DMA is placing the incoming UART data was 1024 bytes size, and at 115200 bauds with 1 start bit  and 1 end bit on the UART, 10240 bits will fill the buffer in 88ms, to avoid overlapping data, it's better to empty it as soon as possible,  so (by Nyquist) 40ms will do the job. that buffer dimension works perfect when fetching weather information because the data barely reaches 1Kbytes. It's a different story for Spotify where sometimes it throws 13Kbytes for a song. So, the initial buffer dimension isn't enough. But choosing a larger period will make other processes slower, like when setting up the ESP8266, the used commands are averagely 14 bytes size (~1.2ms to transmit). So, the current mechanism does not try to empty the buffer but just wait for the content of the HTTP, the header is almost discarded, the only fields of interest are the _HTTP Method_, the _HTTP Status Code_ and the _Content-Length_. Right now the buffer size is 8Kbytes and 40ms works perfectly.
 
    _code: src/esp8266_driver.c_
 
@@ -59,7 +59,7 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
   Triggered each 20 ms, it checks if the LCD has being touched. An event-triggered filter was implemented in order to reduce the noise of the coordinates when the panel gets touched. The figure Fig.1 shows the x axis pixels upon touching the Spotify Icon button for 10.24 seconds (512 samples). As seen the x-axis data ranges from 200px to 280px,  falling only 211 samples  within the icon's dimension out of 512 samples.
 
-  ![image](data/img/touch_screen_x_data.png "Fig.1 Touch Screen x-axis data")
+  ![image2](data/img/touch_screen_x_data.png "Fig.1 Touch Screen x-axis data")
 
   Some noise can be allowed whilst the double of standard deviation is as smaller as the button's dimension, in this case a button covers 30x30 pixels and the standard deviations of the touchscreen are the followings for each axis:
   $$ {sdasd}
@@ -93,18 +93,18 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
   
 
-  ![image](data/img/filter_comparison.png "Filter Comparison")
+  ![image3](data/img/filter_comparison.png "Filter Comparison")
 
   In Fig.2, only a small window frame of 250ms is shown because pushing a button takes less than 1 second, so the purpose is to see which filter is the fastest one; since all filters kept the signal within the range of the button. Filters such as _Weighted Average_ and _Averaging the Closest_ are operating on the boundaries, discarded. On the other hand _State Update_ is the slowest among all, discarded as well, however _State Update_ with $\alpha(t)$ takes the signal to the button region in the second samples (20ms).
 
-  Equation _(2)_ is quite similar to a Kalman filter, but, instead $\alpha$ depending on the variance of the process and the measure, it only leads $\alpha_0$ to become $\alpha_1$ at the rate of $\sigma$ (_+1_ is to avoid division by zero). This is due that a large $\alpha$ have a fast response but performs poorly at removing noise (used when touched) while a small $\alpha$ performs good at removing noise but is really slow, so the idea behind it is to change $\alpha$ over time so the signal reaches the desired level as soon as possible and then removes the noise.  This is implemented in a way that the $t$ gets resetted when there's a touch:
+  Equation _(2)_ is quite similar to a Kalman filter, but, instead of $\alpha$ depending on the variance of the process and the measure, it only leads $\alpha_0$ to become $\alpha_1$ at the rate of $\sigma$ (_+1_ is to avoid division by zero). This is due that a large $\alpha$ have a fast response but performs poorly at removing noise (used when touched) while a small $\alpha$ performs good at removing noise but is really slow, so the idea behind it is to change $\alpha$ over time so the signal reaches the desired level as soon as possible and then removes the noise.  This is implemented in a way that the $t$ gets resetted when there's a touch:
 
   ```c
-    1 #define ALPHA10_X   5.799 // alpha1 - alpha0                                     
-    2 #define ALPHA1_X    0.001                                                         
-    3 #define SIGMA_X     260.0                                                         
-    4 #define DELTA_T     0.02                                                         
-    5                                                                                   
+    1 #define ALPHA10_X   5.799 // alpha1 - alpha0        
+    2 #define ALPHA1_X    0.001
+    3 #define SIGMA_X     260.0
+    4 #define DELTA_T     0.02
+    5
     6 static void state_update_extended(int *x, uint8_t *trigger) {
     7     static int16_t x_estimated = 0;
     8     static float t = 0.0;
@@ -115,14 +115,19 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
    13     } else {
    14         t = 0.0;     
    15         x_estimated = 0; 
-   16     }                                                                              17                                                                                   
+   16     }
+   17                     
    18     *trigger = 1;
    19
-   20     alpha_x = ALPHA1_X + ALPHA10_X / (SIGMA_X * t + 1.0);                 
+   20     alpha_x = ALPHA1_X + ALPHA10_X / (SIGMA_X * t + 1.0);   
    21     x_estimated = x_estimated + alpha_x * (*x - x_estimated);
    22     *x = (int) x_estimated;
-   23 }  
+   23 } 
   ```
+
+  $$
+  \alpha_0 = 5.8,\alpha_1 = 0.001, \sigma=260
+  $$
 
   
 
@@ -132,18 +137,78 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
   The ESP8266 (ESP8) works on request of AT commands, a host sends a command such as: 
 
-  ```
-  Host: AT+CWMODE=3\r\n
-  ESP8: AT+CWMODE=3\r\n
+  ```shell
+  Host: AT+CWMODE=3\r\n	# Request to work as station and Access Point
+  ESP8: AT+CWMODE=3\r\n 	# ESP8 replies the command itself
   ESP8: \r\n
-  ESP8: OK\r\n
+  ESP8: OK\r\n			# and OK if it went ok or ERROR
   ```
 
+  A typical implementation to interface the ESP8266 and a MCU found all over internet looks like this:
   
+  ```c 
+  sendCommand("AT+<command 0>");
+  delay_ms(500);
+  sendCommand("AT+<command 1>");
+  delay_ms(500);
+  ```
+  
+  This interfacing has been automated by polling the ESP8266 state _esp8_status_ from the _ESP8266 poll_ task (another option could have been a producer-consumer approach) and moving the state according to a Look-Up-Table for that state. 
+  
+  There are 8 states:
+  
+  - Superstate INITIAL_SETUP, it has 5 substates: _RESTART_, _CHECK_DEV_, _STATION_MODE_, and _MULTI_CON_.
+  - Superstate NETSTATUS, it has 3 substates: _IFCONFIG_, _NETSTAT_, and _NETKILL_
+  - Superstate CLIENT, it has 7 substates: _CONNECT_SSL_, _CONNECT_TCP_, _RMALLOC_, _CWRITE_, _CREAD_, _CLOSE_, and _DONE_
+  - Superstate AP, it has 3 substates: _RESTART_4AP_, _ENABLE_AP_, and _SET_AP_CREDENTIALS_.
+  - Superstate SERVER, it has 8 substates: _MULTI_CONN_AP_, _SERVER_ON_, _LISTENING_, _SREAD_, _RMALLOC_S, _SWRITE_, _PURGE_BUFF_, and _SERVER_OFF_.
+  - ON_HOLD, fetches _esp8_status_ and moves the state according to a LUT of the previous state.
+  - READY, idle state, waits for a connection request.
+  - ERROR, moves the state according to a LUT of the previous state.
+  - SET_STA_CREDENTIALS, dummy state to set the credentials of an Access Point to be joined.
+  
+  In C, a state is represented by a single _uint16_t_ (linux-dev inspired):
+  
+  ```c
+    1 #define SUBSTATEBITS        6   
+    2 #define SUBSTATEMASK        ((1u << SUBSTATEBITS) - 1)
+    3 #define MKSTATE(super, sub) ((sub << SUBSTATEBITS) | (super & SUBSTATEMASK))
+    4 #define SUBSTATE(state)     (state >> SUBSTATEBITS)
+    5 #define SUPERSTATE(state)   (state & SUBSTATEMASK)
+  ```
+  
+  So, in order to address a state, i.e. a connection to [api.spotify.com:443](https://api.spotify.com) is required:
+  
+  ```c 
+  state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL); 
+  ```
+  
+  Or to the _ON_HOLD_ state:
+  
+  ```c
+  state->nx_state = MKSTATE(ESP8SS_ON_HOLD, 0);
+  ```
+  
+  As said, knowing the previous state is important in order to move the process, that's why a structure holds the states:
+  
+  ```c
+    1 struct StateS {            
+    2     uint16_t *nx_state; 	// Next State 
+    3     uint16_t *state;		// Previous State
+    4     uint8_t *timeout;		// Loop count spent in a single state
+    5     int8_t *wifi_mode;
+    6 };  
+  ```
+  
+  This structure then is passed to all states that can change the state.
+  
+  The overall Network state machine looks like Fig.3, where _SuperState_ is an alias for any superstate.
+  
+   
 
 ```mermaid
 ---
-title: Fig 1. Network Overall FSM
+title: Fig.3 Network Overall FSM
 ---
 stateDiagram-v2 
 
@@ -158,64 +223,68 @@ note left of SuperState : = INITIAL_SETUP, NETSTATUS, CLIENT, SERVER, AP
 
 ```
 
-```mermaid
----
-title: Fig. 2 - Initial Setup Super State
----
-stateDiagram-v2 
-direction TB
-state LUT_OK <<choice>>
-[*] --> INITIAL_SETUP
-state INITIAL_SETUP {
-direction LR
-[*] --> RESTART : LUT(prev_state)
-RESTART --> [*]
-[*] --> CHECK_DEV
-[*] --> CHECK_DEV : (ready & RESTART) | err & (STATION_MODE | MULTI_CONN)
-CHECK_DEV --> [*]
-[*] --> STATION_MODE : ok & CHECK_DEV
-STATION_MODE -->  [*]
-[*] --> MULTI_CONN : ok & STATION_MODE
-MULTI_CONN --> [*]
-}
+Unlike other superstates, Client and Server state have a _client_function_ and _Server_function_ that allows choosing the client and/or the server based either in internal events (weather update and spotify update) or external events, spotify button and the setting button. The spotify button creates a TCP server in station mode inside the ESP8266 and serves a link in a browser to allow the user connect a spotify account. the setting button switches the ESP8266 to a SoftAP + station mode and serves a minimal ui that allows the user to join an Access Point. As for the web clients, there are Five 4 clients:
 
-LUT_OK --> NETSTATUS : ok & MULTI_CONN
-LUT_OK --> INITIAL_SETUP
-
-ON_HOLD --> LUT_OK 
-INITIAL_SETUP --> ON_HOLD
-ON_HOLD --> ERROR : err
-
-ERROR --> INITIAL_SETUP 
-```
+- Location, requests to IP-API the lattitude and longituted ip-based.
+- Weather, requests to OpenWeatherMap the current weather.
+- Spotify Auth, requests a token or a renewal of it.
+- Spotify Player, requests the current player state.
 
 ```mermaid
----
-title: Fig. 2 - Initial Setup Super State
----
-stateDiagram-v2 
-direction LR
-state LUT_OK <<choice>>
-state NETSTATE {
-direction LR
-[*] --> IFCONFIG
-IFCONFIG --> [*]
-[*] --> NETSTAT
-NETSTAT --> [*]
-[*] --> NETKILL : ok
-NETKILL -->  [*]
-}
+flowchart TD
+Start --> settings
+settings --> fetch_location
+fetch_location --> fetch_weather
+fetch_weather --> token{spotify_token?}
 
-LUT_OK --> NETSTAT : ok | ready
-LUT_OK --> NESTATUS : ok & MULTI_CONN
-ON_HOLD --> LUT_OK 
-INITIAL_SETUP --> ON_HOLD
-ON_HOLD --> ERROR : error
+token -- no --> code{spotify_code?}
+token -- yes --> fetch_spotify_player
 
-ERROR --> INITIAL_SETUP : LUT(prev_state)
+code -- yes --> fetch_spotify_token
+code -- no --> Ready
+
+fetch_spotify_token --> fetch_spotify_player
+fetch_spotify_player --> http_code{HTTP200? HTTP401?}
+
+http_code -- HTTP200 --> fetch_spotify_player
+http_code -- HTTP401 --> fetch_spotify_token
+
+Ready --> Ready
+update_weather --> ready{ready?}
+ready -- yes & update_weather --> fetch_location
+ready -- yes & update_spotify --> fetch_spotify_player
+update_spotify --> ready
+
+spotify_setup --> ready
+ready -- yes & spotify_setup --> spoty_server
+
+wifi_setup --> ready
+ready -- yes & wifi_setup --> enable_AP
+enable_AP --> wifi_supplicant
 ```
 
+a
 
+so the network function is implemented like this:
+
+```c
+void network (void) {
+    /* Static variable declarations */
+    NetEventHandlers(&state, &client_id, &server_id);	// This can mod
+    switch(nx_state) {
+    /* states */
+    case ESP8SS_CLIENT:
+    	client_function(&state, &client_id);
+        break;
+   	case ESP8SS_SERVER:
+    	server_function(&state, server_id);
+        break;
+    /* other states */
+    }
+}
+```
+
+ 
 
  ## Future Improvements
 

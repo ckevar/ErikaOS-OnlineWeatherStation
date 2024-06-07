@@ -3,7 +3,7 @@
 
 #include "network.h"
 
-enum ESP8PowerupState {
+enum ESP8InitialSetup {
     ESP8S_RESTART,
     ESP8S_CHECK_DEV,
     ESP8S_STATION_MODE,
@@ -28,9 +28,9 @@ typedef struct SSIDnPSWD_t {
 	uint8_t size;
 } SSIDnPSWD_t;
 
-uint16_t LUT_OK_powerup(enum ESP8PowerupState prev_state);
-uint16_t LUT_timeout_powerup(enum ESP8PowerupState prev_subs);
-uint16_t LUT_on_err_powerup(enum ESP8PowerupState prev_subs);
+uint16_t LUT_OK_powerup(enum ESP8InitialSetup prev_state);
+uint16_t LUT_timeout_powerup(enum ESP8InitialSetup prev_subs);
+uint16_t LUT_on_err_powerup(enum ESP8InitialSetup prev_subs);
 void fsm_powerup(struct StateS *state);
 
 uint16_t LUT_OK_access_point(enum ESP8AccessPointState prev_subs);

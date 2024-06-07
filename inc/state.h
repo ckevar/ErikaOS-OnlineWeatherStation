@@ -12,9 +12,5 @@
 #define MKSTATE(super, sub) ((sub << SUBSTATEBITS) | (super & SUBSTATEMASK))
 #define SUBSTATE(state)     (state >> SUBSTATEBITS)
 #define SUPERSTATE(state)   (state & SUBSTATEMASK)
-#define MAX_STATES          32
-
-void state_init(void);
-void allocate_state(void); 
 
 #endif

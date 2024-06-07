@@ -100,11 +100,13 @@ y = []
 xtmp = 0
 ytmp = 0
 
-with open(sys.argv[1], 'r') as f:
+with open(sys.argv[1], 'r', errors='ignore') as f:
     for line in f:
         digi = line.split("\t")
         try:
             xtmp = float(digi[0])
+            if (xtmp > 3000):
+                continue
         except:
             continue
         '''
@@ -138,44 +140,6 @@ print("Middle Value-3, std = {}".format(np.std(xmv)))
 print("Average to the closest-3, std = {}".format(np.std(xac)))
 print("State Update, std = {}".format(np.std(xsu)))
 print("State Update 2, std = {}".format(np.std(xsu2)))
-'''
-plt.plot(x)
-plt.plot(xsu)
-plt.plot(xsu2)
-plt.plot(xsu3)
-'''
-
-'''
-print("STATE UPDATE")
-xsu_fast = np.array(state_update(x[273:], 0.2))
-xsu = np.array(state_update(x[273:], 0.03))
-ysu = np.array(state_update(y, 0.2))
-
-sigma = state_update2_sigma(1.0, 0.03, 0.05, 2.4)
-print("sigma {}".format(sigma))
-xsu2 = np.array(state_update2(x[273:], 10.0, 0.01, 300.0))
-xsu3 = np.array(state_update2(x[273:], 12.0, 0.005, 200.0))
-xstd = np.std(xsu)
-ystd = np.std(ysu)
-print(xstd, ystd)
-
-print("KALMAN FILTER")
-xkf, xKn = kf(x, 1, 0.03)
-ykf, yKn = kf(y, 1, 0.1)
-
-#
-#plt.plot(x * 0.096, y * 0.0649, '.')
-#plt.plot(xsu * 0.096, ysu * 0.0649, '.')
-#
-plt.plot(x[273:] * 0.096, '.', label='raw')
-plt.plot(xsu * 0.096, label='su')
-plt.plot(xsu_fast * 0.096, label='su fast')
-plt.plot(xsu2 * 0.096, label='su1 0.03 277.7')
-plt.plot(xsu3 * 0.096, label='testint')
-plt.legend(loc='upper left')
-
-# plt.plot(xKn)
-'''
 
 fig, axs = plt.subplots(2, 3)
 fig.suptitle('Fig.2 Filter Comparison')
@@ -207,7 +171,6 @@ axs[1, 0].set(xlabel='Time[s]', ylabel='Pixels')
 axs[1, 0].fill_between(t, x_top, x_top + 30, alpha=0.5, label='Button region')
 axs[1, 0].legend()
 
-
 axs[1, 1].plot(t, x, '.', label='Non filtered')
 axs[1, 1].plot(t, xsu, label='Filtered')
 axs[1, 1].set_title('State Update, alpha=0.2')
@@ -215,14 +178,12 @@ axs[1, 1].set(xlabel='Time[s]', ylabel='Pixels')
 axs[1, 1].fill_between(t, x_top, x_top + 30, alpha=0.5, label='Button region')
 axs[1, 1].legend()
 
-
 axs[1, 2].plot(t, x, '.', label='Non filtered')
 axs[1, 2].plot(t, xsu3, label='Filtered')
 axs[1, 2].set_title('State Update, alpha(t)')
 axs[1, 2].set(xlabel='Time[s]', ylabel='Pixels')
 axs[1, 2].fill_between(t, x_top, x_top + 30, alpha=0.5, label='Button region')
 axs[1, 2].legend()
-
 
 plt.show()
 
