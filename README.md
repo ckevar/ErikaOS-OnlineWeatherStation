@@ -79,11 +79,11 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
   They were all tested using the raw data from Fig.1 and the results are shown in Fig.2. Two additional filters were explored, the [State Update Equation](https://www.kalmanfilter.net/alphabeta.html) _(1)_ with a fixed $\alpha$ and another _(2)_ with $\alpha(t)$:
 
-  $$\hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(z_n-\hat{x}_{n,n-1})\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,(1) $$
+  $$\hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(z_n-\hat{x}_{n,n-1})\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,(1)$$
   and
-  $$ \hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(t)(z_n-\hat{x}_{n,n-1}) \,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,(2) $$
+  $$\hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(t)(z_n-\hat{x}_{n,n-1}) \,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,(2)$$
 
-  $$ \alpha(t) = \alpha_1+\frac{\alpha_0-\alpha_1}{\sigma t + 1} | \alpha_0>\alpha_1>0 \and \sigma > 0\,\,\,\,\,\,\,\,(3) $$
+  $$\alpha(t) = \alpha_1+\frac{\alpha_0-\alpha_1}{\sigma t + 1} | \alpha_0>\alpha_1>0 \and \sigma > 0\,\,\,\,\,\,\,\,(3)$$
 
   
 
