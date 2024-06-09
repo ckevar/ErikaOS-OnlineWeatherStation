@@ -41,15 +41,17 @@
 	"</center>"\
 "</body>"
 	
+#define STR_HELPER(num)				#num
+#define NUMTOSTR(num)				STR_HELPER(num)
 #define WEBAPP_INDEX_LEN			541
-#define WEBAPP_INDEX_H_STR			"541" 
+#define WEBAPP_INDEX_H_STR			NUMTOSTR(WEBAPP_INDEX_LEN)
 #define WEBAPP_INDEX_H_LEN			3	// Length of *_CL
 
 	// Not found
 #define WSUPP_NOT_FOUND				2
 #define WEBAPP_NOT_FOUND_STR		""
 #define WEBAPP_NOT_FOUND_LEN		0
-#define WEBAPP_NOT_FOUND_H_STR		"0"
+#define WEBAPP_NOT_FOUND_H_STR		NUMTOSTR(WEBAPP_NOT_FOUND_LEN)
 #define WEBAPP_NOT_FOUND_H_LEN		1
 
 	// All done
@@ -69,7 +71,7 @@
 "</body>"
 
 #define WEBAPP_ALLDONE_LEN			263
-#define WEBAPP_ALLDONE_H_STR		"263"
+#define WEBAPP_ALLDONE_H_STR		NUMTOSTR(WEBAPP_ALLDONE_LEN)
 #define WEBAPP_ALLDONE_H_LEN		3
 /********************************************************************/
 

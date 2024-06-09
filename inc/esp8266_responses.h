@@ -74,18 +74,8 @@ struct ESP8266Status {
 /* STATUS TCP */
 #endif
 
-/*
-
-#define ESP8_RESP_OK_STR		"OK" 	// ESP8266 OK reply
-#define ESP8_RESP_ERROR_STR		"ERROR"	// ESP8266 ERROR reply
-#define ESP8_RESP_FAIL_STR 		"FAIL"	// ESP8266 FAIL reply
-#define ESP8_RESP_GOT_IP_STR	"GOT IP"	// ESP8266 WIFI GOT IP reply
-#define ESP8_RESP_WRAP_STR      '>'
-#define ESP8_RESP_LINK_CLOSED_STR 	"CLOSED" // HTTP Closed
-#define ESP8_RESP_IPD_STR		"+IPD"
-#define ESP8_RESP_READY_STR 	"ready"
-#define ESP8_RESP_IP_STR 		"+CIPSTA_CUR:ip"
-#define ESP8_RESP_STATUS_STR    "STATUS:"
+/* 
+List of Reponses to AT commands:
 
 >   -> <wrap symbol>
 +   -> "+IPD", "+CIPSTA_CUR:ip"
@@ -119,7 +109,6 @@ i   -> "+CIPSTA_CUR:ip"
 p   -> "+CIPSTA_CUR:ip"end
 r   -> "ready"
 y   -> "ready"
-
 
 */
 
