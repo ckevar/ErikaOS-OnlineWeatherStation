@@ -59,7 +59,7 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
   Triggered each 20 ms, it checks if the LCD has being touched. An event-triggered filter was implemented in order to reduce the noise of the coordinates when the panel gets touched. The figure Fig.1 shows the x axis pixels upon touching the Spotify Icon button for 10.24 seconds (512 samples). As seen the x-axis data ranges from 200px to 280px,  falling only 211 samples  within the icon's dimension out of the 512 samples.
 
-  ![image2](data/img/touch_screen_x_data.png "Fig.1 Touch Screen x-axis data")
+  ![image2](/data/img/touch_screen_x_data.png "Fig.1 Touch Screen x-axis data")
 
   Some noise can be allowed whilst the double of standard deviation is as smaller as the button's dimension, in this case a button covers 30x30 pixels and the standard deviations of the touchscreen are the followings for each axis:
   $$ {sdasd}
