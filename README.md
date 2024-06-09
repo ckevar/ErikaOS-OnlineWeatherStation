@@ -206,9 +206,9 @@ $$\hat{x} _{n,n} =\hat{x} _{n,n-1} + \alpha(t)(z _n - \hat{x} _{n,n-1}) \,\,\,\,
   
   ```c
     1 struct StateS {            
-    2     uint16_t *nx_state; 	// Next State 
-    3     uint16_t *state;		// Previous State
-    4     uint8_t *timeout;		// Loop count spent in a single state
+    2     uint16_t *nx_state;   // Next State 
+    3     uint16_t *state;      // Previous State
+    4     uint8_t *timeout;     // Loop count spent in a single state
     5     int8_t *wifi_mode;
     6 };  
   ```
