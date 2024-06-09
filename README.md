@@ -62,7 +62,9 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
   ![image2](/data/img/touch_screen_x_data.png "Fig.1 Touch Screen x-axis data")
 
   Some noise can be allowed whilst the double of standard deviation is as smaller as the button's dimension, in this case a button covers 30x30 pixels and the standard deviations of the touchscreen are the followings for each axis:
-  $$ \sigma_x = 22.88px, \sigma_y = 3.98px $$
+
+  $$\sigma_x = 22.88px, \sigma_y = 3.98px$$
+  
   Y-axis doesn't need a filter as long as the touched coordinate is close to centre of the button, while the x-axis does need to be filtered.
 
   There's an [application report](https://www.ti.com/lit/an/sbaa155a/sbaa155a.pdf?ts=1717523545771&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FTSC2046E%253FkeyMatch%253DTSC2046EIRGVR%2526tisearch%253Dsearch-everything%2526usecase%253DOPN-ALT) by W. Fang where 4 non linear filters are suggested for resistive touchscreens: 
@@ -77,7 +79,7 @@ In the main board, the app was built based on ErikaRTOSv2, which is divided in 6
 
   They were all tested using the raw data from Fig.1 and the results are shown in Fig.2. Two additional filters were explored, the [State Update Equation](https://www.kalmanfilter.net/alphabeta.html) _(1)_ with a fixed $\alpha$ and another _(2)_ with $\alpha(t)$:
 
-  $$ \hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(z_n-\hat{x}_{n,n-1})\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,(1) $$
+  $$\hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(z_n-\hat{x}_{n,n-1})\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,(1) $$
   and
   $$ \hat{x}_{n,n} =\hat{x}_{n,n-1} + \alpha(t)(z_n-\hat{x}_{n,n-1}) \,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,\,(2) $$
 
