@@ -11,23 +11,29 @@
 /*********************************************************************
  * This replies back the pointer in the json buffer where the value of
  * the key is stored. This is rudimentary, we're not checking parenthesis
- * or square brackets.
+ * or square brackets. Inspired by strtok
  *********************************************************************/
 char *json_get_value_ptr(char *json, char *key, unsigned short key_len) {
-	while (*json) {
-		// Getting the Fragment of interest
+	register char *c;
+	register char *sholder;
+
+goto_FUNC_json_get_value_ptr_FILE_json_parser:
+	for (c = key; *json; json++) {
 		if (*json == '"' && *(json + key_len + 1) == '"') {
-			// There's a risk that the json + key_len + 1 equals is 
-			// different than '"'
-			json++;
-			
-			if (memcmp(json, key, key_len) == 0)
-				return json + key_len + 2;
-			
-			json += key_len - 1;
+			sholder = ++json;
+		
+			while((*json++ == *c++) && (*c != 0));
+
+			if (*c != 0) {
+				json = sholder + key_len + 1;
+				goto goto_FUNC_json_get_value_ptr_FILE_json_parser;
+			}
+
+			return json + 2;
+
 		}
-		json++;
 	}
+
 	return NULL;
 }
 
@@ -37,34 +43,42 @@ char *json_get_value_ptr(char *json, char *key, unsigned short key_len) {
  * It replies back where the values of the keys in vals
  * it returns the number of missing fields
  ******************************************************************/
-unsigned char json_query_mulKey_ValPtrLen(char *json, char n,\
-										char **key,  unsigned short *key_len,\
-										char **val,  unsigned short *val_len) 
+unsigned char json_query_mulKey_ValPtrLen(char *json, int16_t n,\
+										char **key,  uint16_t *key_len,\
+										char **val,  uint16_t *val_len) 
 {
-	char *_json = json;
+	register char *_json;
+	register char *c;
+	char *sholder; 
+	_json = json;
+	n--;
 
-	while (*json) {
-		if ((*json == '"') && (*(json + key_len[n - 1] + 1) == '"')) {
-			json++;	// skip '"'
-			if (memcmp(json, key[n - 1], key_len[n - 1]) == 0) {
-				json += key_len[n - 1] + 2; // skips "":"
+goto_FUNC_json_query_mulKey_ValPtrLen_FILE_json_parser:
+	for (c = key[n]; *json; json++) {
+		if ((*json == '"') && (*(json + key_len[n] + 1) == '"')) {
+			sholder = ++json;	// skip '"'
+
+			while ((*json++ == *c++) && (*c != 0));
+			if (*c != 0) {
+				json = sholder + key_len[n] + 1;
+				goto goto_FUNC_json_query_mulKey_ValPtrLen_FILE_json_parser;
+			}
+
+			json += 2; // skips "":"
 					
-				// Grabs Value
-				val[n - 1] = json;
-				while ((*json != ',') && (*json != '}')) 
-					json++;
+			// Grabs Value
+			val[n] = json;
+			for (;(*json != ',') && (*json != '}'); json++);
 
-				val_len[n - 1] = json - val[n - 1];
+			val_len[n] = json - val[n];
 
-				// Checks if all values were found
-				n--;
-				if (n == 0) 
-					return 0;
-			} else 
-				json += key_len[n - 1] + 1;
+			// Checks if all values were found
+			if ((--n) > -1) 
+				goto goto_FUNC_json_query_mulKey_ValPtrLen_FILE_json_parser;
+
+			return 0;
 
 		}
-		json++;
 		// This is a safe in case the buffer is full and the iteration
 		// keeps going.
 		if(json - _json > 6000) {
