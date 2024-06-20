@@ -535,7 +535,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 			if (SUBSTATE(*state->nx_state) == ESP8S_CONNECT_TCP)
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 
-			if (esp8_status.http > HTTP_5XX) {
+			if (esp8_status.http > HTTP_500) {
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
 				UI_set_track("Token failed");
 			}
@@ -589,7 +589,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 			if(SUBSTATE(*state->nx_state) == ESP8S_CONNECT_TCP)
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 			
-			if(esp8_status.http > HTTP_5XX) {
+			if(esp8_status.http > HTTP_500) {
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
 				esp8_status.http = HTTP_XXX;
 			}
@@ -629,14 +629,15 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 
 /***** Event Handler *****/
 
-void NetEventHandler(struct StateS *s,\
-		uint8_t *server_id, uint8_t * client_id)
+void 
+NetEventHandler(struct StateS *s, uint8_t *server_id, uint8_t * client_id)
 {
 	if (IsEvent(SPOTIFY_CONF_EVENT)) {
 		*s->nx_state = MKSTATE(ESP8SS_SERVER, 0);
 		*s->state = *s->nx_state;
 		*server_id = SPOTIFY_CODE;
 		ClearEvents();
+		return;
 	}
 
 	if (IsEvent(SET_AP_ESP8266_EVNT)) {
@@ -644,6 +645,7 @@ void NetEventHandler(struct StateS *s,\
 		*s->state =  *s->nx_state;
 		server_id = WIFI_SUPPLICANT;
 		ClearEvents();
+		return;
 	}
 	
 	if	((internal_events) &&\

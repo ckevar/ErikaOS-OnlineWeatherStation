@@ -2,8 +2,8 @@
 #define NET_CREDENTIALS_H
 
 /******* Credentials for the Soft-AP *******/
-#define AP_CREDENTIALS      "\"Erika Weather\",\"ErikaRTOS\",2,4\r\n" 
-                                                       /* 2: channel,
+#define AP_CREDENTIALS      "\"Erika Weather\",\"ErikaRTOS\",1,4\r\n" 
+                                                       /*1: channel,
                                                         * 4: WPA,WPA2.PSK Encryption
                                                         */
 #define AP_CREDENTIALS_LEN  33 

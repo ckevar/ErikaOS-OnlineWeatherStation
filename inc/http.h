@@ -7,25 +7,23 @@
 #define HTTP_METHOD_POST_SIZE	4
 #define HTTP_METHOD_RESPONSE	8
 
+
 enum HTTPMethods {
+	/* This values are get xor-ing 0th ^ 3rd*/
 	HTTP_Method_UNKNOWN = 0,
-	HTTP_Method_GET = HTTP_METHOD_GET_SIZE,
-	HTTP_Method_POST = HTTP_METHOD_POST_SIZE,
-	HTTP_RESPONSE = HTTP_METHOD_RESPONSE,
+	HTTP_Method_GET = 103,
+	HTTP_Method_POST = 4,
+	HTTP_RESPONSE = 24,
 };
 
 enum HTTPStatusCode {
-	HTTP_XXX,
-	HTTP_1XX,
-	HTTP_2XX,
-	HTTP_200,
-	HTTP_204,
-	HTTP_3XX,
-	HTTP_4XX,
-	HTTP_401,
-	HTTP_5XX,
-	HTTP_520,
-	HTTP_522,
+	HTTP_XXX = 0,
+	HTTP_200 = '2' << 8,
+	HTTP_204 = '2' << 8 | 4,
+	HTTP_401 = '4' << 8 | 1,
+	HTTP_500 = '5' << 8,
+	HTTP_520 = '5' << 8 | 2 << 4,
+	HTTP_522 = '5' << 8 | 2 << 2 | 2,
 };
 
 

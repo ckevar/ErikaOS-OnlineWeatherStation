@@ -147,21 +147,6 @@ static void esp8266_USART_RX_DMA_Init(char *BUFF_L, uint16_t size) {
 }
 
 
-/* 
- * Former way to send commands without DMA enabled */
-/*
-void esp8266_cmd(char *str) {
-	unsigned char i = 0;
-
-	while (str[i] != '\0') {
-		//Loop until the end of transmission 
-		while (USART_GetFlagStatus(EVAL_COM1, USART_FLAG_TC) == RESET);
-
-		USART_SendData(EVAL_COM1, (uint16_t) str[i]);
-		i++;
-	}
-}
-*/
 static void esp8266_dma_cmd(char *str, unsigned short length) {
 	esp82266_dma_TX_disable();
 	memcpy(esp8_TX, str, length);
@@ -176,8 +161,8 @@ static void esp8266_dma_cmd(char *str, unsigned short length) {
  * if arg_len is smaller than zero, \r\n wont be appende to the message,
  * this makes when suppling HTML data to the ESP8266
  ************************************************************************/ 
-static void esp8266_dma_cmd_mul_param(char *cmd, unsigned short cmd_len, \
-		char *arg, short arg_len)
+static void
+esp8266_dma_cmd_mul_param(char *cmd, unsigned short cmd_len, char *arg, short arg_len)
 {
 	esp82266_dma_TX_disable();
 
@@ -343,67 +328,19 @@ static void esp8266_rx_N_pop(uint16_t it) {
  * gets method on the html arrival data, only GET and POST supported
  */
 
-char tmp[10];
 static unsigned char esp8266_http_get_method(void) {
-	unsigned char get_method = 0, post_method = 0;
-	unsigned char no_method = 0;
-	memcpy(tmp, esp8.read, 10);
-	
+	uint8_t method;
+	method = *esp8.read;
+	esp8266_rx_N_pop(3);
+	method ^= *esp8.read;
+
 	while(*esp8.read != ' ') {
-		switch(*esp8.read) {
-		case '0':
-		case '1':
-			no_method++;
-			if (no_method == HTTP_RESPONSE) {
-				esp8266_rx_N_pop(2);
-				return HTTP_RESPONSE;
-			}
-			break;
-
-		case '/': case '.':
-			no_method++;
-			break;
-
-		case 'G': case 'E':
-			get_method++;
-			break;
-
-		case 'T':
-			get_method++;
-
-			if(get_method == HTTP_Method_GET) {
-				esp8266_rx_N_pop(2);
-				return HTTP_Method_GET;
-			}
-
-			post_method++;
-
-			if (post_method == HTTP_Method_POST) {
-				esp8266_rx_N_pop(2);
-				return HTTP_Method_POST;
-			}
-
-			no_method++;
-			break;
-		
-		case 'P':
-			post_method++;
-			no_method++;
-			break;
-
-		case 'O': case 'S':
-			post_method++;
-			break;
-
-		case 'H':
-			no_method++;
-			break;
-		}
 		esp8266_rx_pop();
 	}
 
 	esp8266_rx_pop();
-	return HTTP_Method_UNKNOWN;
+
+	return method;
 }
 
 static uint16_t esp8266_http_get_Resource(char *res) {
@@ -542,7 +479,7 @@ static void esp8266_http_get_Content(char *content, unsigned short len) {
 	content += len;
 
 	rns = 0;
-	/* When the webser is throwing too much data, it arrives in chunks
+	/* When the webserver is throwing too much data, it arrives in chunks
 	 * and each chunk has a header, so far that header was being ingnored
 	 * and count as part of the content, so when the content is copied 
 	 * out there are some remaining actual content that has to be copied
@@ -567,48 +504,16 @@ static void esp8266_http_get_Content(char *content, unsigned short len) {
  *		IP-API, OpenWeatherMap, and Spotify
  */
 static void http_get_code(void) {
-	switch(*esp8.read) {
-		case '1':
-			esp8_status.http = HTTP_1XX;
-			break;
 
-		case '2':
-			esp8266_rx_N_pop(2);
+	esp8_status.http = *esp8.read << 8;
+	esp8266_rx_pop();
 
-			if (*esp8.read == '0')
-				esp8_status.http = HTTP_200;
+	esp8_status.http |= (*esp8.read & 0x0F) << 4;
+	esp8266_rx_pop();
 
-			else if (*esp8.read == '4')
-				esp8_status.http = HTTP_204;
-			else
-				esp8_status.http = HTTP_2XX;
-
-			esp8266_rx_pop();
-			return;
-
-		case '3':
-			esp8_status.http = HTTP_3XX;
-			break;
-
-		case '4':
-			esp8266_rx_N_pop(2);
-
-			esp8_status.http = *esp8.read == '1'\
-							   ? HTTP_401 \
-							   : HTTP_4XX;
-
-			esp8266_rx_pop();
-			return;
-
-		case '5':
-			esp8_status.http = HTTP_2XX;
-			break;
-
-		default:
-			esp8_status.http = HTTP_XXX;
-	}
-
-	esp8266_rx_N_pop(3);
+	esp8_status.http |= *esp8.read & 0x0F;
+	esp8266_rx_N_pop(2);
+	
 }
 
 /********************************************************
@@ -623,20 +528,13 @@ static int16_t esp8266_http_parse(char *out_buff) {
 	uint16_t cursor, content_length, esp8_i, tickout;
 	
 	rest_method = esp8266_http_get_method();
-	if (rest_method == 0) 
-		return -1;
-
 	tickout = 0;
 	cursor = 0;
 
 	switch(rest_method) {
 	case HTTP_Method_GET:
 		cursor = esp8266_http_get_Resource(out_buff);
-		/* skip header */
-		while(*esp8.read != 0 && (tickout < MAX_TICKOUT)) {
-			esp8266_rx_pop();
-			tickout++;    
-		}
+		esp8266_html_skip_header();
 
 		if(tickout == MAX_TICKOUT)
 			return -1;
@@ -662,9 +560,6 @@ static int16_t esp8266_http_parse(char *out_buff) {
 		content_length = esp8266_http_get_ContentLength();
 		esp8266_html_skip_header();
 
-		if (content_length > ESP8266_NUM_LINK * ESP8266_BUFF_PER_LINK) {
-			esp8_status.http = HTTP_2XX;
-		}
 
 		if (esp8_status.http != HTTP_200) {
 			esp8_status.cmd = ESP8_DATA_PULLIN;
@@ -683,11 +578,13 @@ static int16_t esp8266_http_parse(char *out_buff) {
 			return content_length;
 
 		esp8266_http_get_Content(out_buff + cursor, content_length);
+	
+		esp8_status.cmd = ESP8_DATA_PULLIN;
+
+		return 0;
 	}
 
-	esp8_status.cmd = ESP8_DATA_PULLIN;
-
-	return 0;
+	return -1;
 }
 
 /*****************************************************
@@ -735,6 +632,7 @@ static unsigned short esp8266_ipd_parse(char *out_buff) {
 		ipd_len = ipd_len * 10 + *esp8.read - 48;
 		esp8266_rx_pop(); 
 	}
+	esp8266_rx_pop();
 	return ipd_len;
 }
 
