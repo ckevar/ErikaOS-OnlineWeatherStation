@@ -5,51 +5,36 @@
 #include "http.h"
 
 #include <string.h>
+#include <stdio.h>
 
-static char webAppBuff[750];
+#define WEBSERVER_SZ	750
+static char webAppBuff[WEBSERVER_SZ];
 
-uint16_t addcontent(char *http, char *html, uint16_t size) {
-		/* Set header ending */
-		memcpy(http, "\r\n\r\n", 4);
-		http += 4;
-
-		/* Set content */
-		memcpy(http, html, size);
-		http += size;
-
-		return 4 + size;
+void outHTTPv11_start(struct outHTTP *out) {
+	out->data = webAppBuff;
+	out->eof = webAppBuff + WEBSERVER_SZ;
+	memcpy(out->data, HTTP_v11, HTTP_v11_SZ);
+	out->free_space = WEBSERVER_SZ - HTTP_v11_SZ;
 }
 
-int16_t mkHTTPHeader(struct Http *http) {
-	char *tmp;
-   	http->http = tmp = webAppBuff;
+uint16_t outHTTP_memcpy(struct outHTTP *out, const char *str, uint16_t size) {
+	if(size > out->free_space)
+		return 0;
 
-	// HTTP STATUS CODE / HTTP/1.1 <code>
-	if (http->status == HTTP_NOT_FOUND) {
-		HTTPHEADERcpy(tmp, HTTP_NOT_FOUND);
-	}
-	else if (http->status == HTTP_OK) {
-		HTTPHEADERcpy(tmp, HTTP_OK);
-	}
-	else {
-		return -1;
-	}
-
-	// Set content type
-	if (http->content_type == HTTP_CONTTYPE_TXTHTML) {
-		HTTPHEADERcpy(tmp, HTTP_CONTTYPE_TXTHTML);
-	} else {
-		return -1;
-	}
-
-	// Set connection
-	if (http->connection == HTTP_CONN_KEEP_ALIVE) {
-		HTTPHEADERcpy(tmp, HTTP_CONN_KEEP_ALIVE);
-	} else {
-		HTTPHEADERcpy(tmp, HTTP_CONN_CLOSE);
-	}
-	
-	return tmp - http->http;
+	memcpy(out->eof - out->free_space, str, size);
+	out->free_space -= size;
+	return size;
 }
 
+uint16_t outHTTP_body(struct outHTTP *out, const char *str, uint16_t size) {
+	uint16_t nu_size;
 
+	nu_size = snprintf(out->eof - out->free_space, out->free_space, \
+			HTTP_CONTENT_LENGTH, size);
+
+	if(nu_size > out->free_space)
+		return 0;
+
+	out->free_space -= nu_size;
+	return outHTTP_memcpy(out, str, size);
+}

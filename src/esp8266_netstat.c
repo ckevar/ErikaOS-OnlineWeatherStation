@@ -17,7 +17,7 @@ uint16_t LUT_OK_netstat(const enum ESP8NetManagerState superstate) {
     case WiFi_Ready:
     case TCP_UDP_Lost:
         switch(superstate) {
-        case ESP8SS_NETSTATUS:  // case APP_FSM_SUPER_NORMAL:
+        case ESP8SS_NETSTATUS:  
         case ESP8SS_CLIENT:
             return MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
 
@@ -89,7 +89,7 @@ void fsm_netstat(struct StateS *state) {
 		break;
 
 	case ESP8S_NETKILL:
-		esp8266_close_tcp(esp8_status.link); // 0 for Single connections CMUX = 0
+		esp8266_close_tcp(esp8_status.link);
 		UI_WriteState("Kill ports");
     }
 

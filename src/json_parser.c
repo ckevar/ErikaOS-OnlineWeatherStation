@@ -5,9 +5,6 @@
 #include "json_parser.h"
 #include <string.h>
 
-// tmp headers
-#include "lcd_log.h"
-
 /*********************************************************************
  * This replies back the pointer in the json buffer where the value of
  * the key is stored. This is rudimentary, we're not checking parenthesis

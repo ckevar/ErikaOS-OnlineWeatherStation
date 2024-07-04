@@ -25,36 +25,40 @@
 #define SPOTIFY_AUTH_EMPTY			0
 #define SPOTIFY_AUTH_NON_EMPTY		' '
 
-struct Http http_conf;
 static char		spotify_auth_content[SPOTIFY_AUTH_CONTENT_SIZE];
 static int16_t	spotify_code;
-static uint8_t internal_events = 0;
-static char timezone[7];
+static uint8_t	internal_events = 0;
+static char		timezone[7];
+
+char *bind_http_esp8266(struct outHTTP *out) {
+	static char size_str[] = "\0\0\0\0";
+	uint16_t size = out->eof - out->data - out->free_space;
+
+	sprintf(size_str, "%d", size);
+	esp8266_load_html(out->data, size);
+	return size_str;
+}
 
 static void app_spotify_conf(uint8_t *success, char *http, void *arg) {
 
 	struct Socket *sock = (struct Socket *) arg;
 	char *code;
+	struct outHTTP out;
+	uint16_t size;
+	
+	outHTTPv11_start(&out);
 
 	MATCH(http, SPOTY_REQ_CALLBACK) {
 		memset(http, 0, SPOTY_REQ_CALLBACK_LEN);
 		http += SPOTY_REQ_CALLBACK_LEN;
 
-		http_conf.content_type = HTTP_CONTTYPE_TXTHTML;
-		http_conf.status = HTTP_OK;
-		http_conf.connection = HTTP_CONN_CLOSE;
-		http_conf.content = SPOTY_CALLBACK_RESP;
-
-		mkHTTP_SpotySupplicant(&http_conf, NULL);
-
-		sock->rsize = http_conf.size_str;
-		esp8266_load_html(http_conf.http, http_conf.size);
-
-		*success = 1;
-
-		code = (char *)sock->arg;
+		outHTTP_basice_header(&out, HTTP_200);
+		outHTTP_body(&out, "", 0);
+		
+		sock->rsize = bind_http_esp8266(&out);
 		
 		/* copy code */
+		code = (char *)sock->arg;
 		while(*http) {
 			*code = *http;
 			*http = 0; 
@@ -62,55 +66,40 @@ static void app_spotify_conf(uint8_t *success, char *http, void *arg) {
 			spotify_code++;
 		}
 
+		*success = 1;
 		return;
 	}
 
 	MATCH(http, SPOTY_REQ) {
 		memset(http, 0, SPOTY_REQ_LEN);
+		
+		if(spotify_on_root(&out, ESP8266_IPv4.ip) == 0) {
+			*success = 0;
+			return;
+		}
 
-		http_conf.content_type = HTTP_CONTTYPE_TXTHTML;
-		http_conf.status = HTTP_OK;
-		http_conf.connection = HTTP_CONN_CLOSE;	
-		http_conf.content = SPOTY_RESP;
-
-		mkHTTP_SpotySupplicant(&http_conf, ESP8266_IPv4.ip);
-
-		sock->rsize = http_conf.size_str;
-		esp8266_load_html(http_conf.http, http_conf.size);
+		sock->rsize = bind_http_esp8266(&out);
 
 		*success = 1;
 		return;
 	
 	}
 
-	
-
 	*success = 0;
-}
-
-void mkHTMLx(const char icontent, const char status) {
-	/* Head */
-	http_conf.content_type = HTTP_CONTTYPE_TXTHTML;
-	http_conf.status = status;
-	http_conf.connection = HTTP_CONN_CLOSE;	
-
-	/* Content */
-	http_conf.content = icontent;
-
-	mkHTTP_WSupplicant(&http_conf);
 }
 
 void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
     struct Socket *sock = (struct Socket *) arg;
     SSIDnPSWD_t *snp = (SSIDnPSWD_t *) sock->arg;
+	struct outHTTP out;
+
+	outHTTPv11_start(&out);
 
 	MATCH(http, WRES_INDEX) {	
-		// /index.html
 		*http = 0; 
-
-		mkHTMLx(WSUPP_INDEX, HTTP_OK);
-        sock->rsize = http_conf.size_str;
-		esp8266_load_html(http_conf.http, http_conf.size);
+		
+		wifi_supplicant_http(&out, HTTP_200, WEBAPP_INDEX);
+		sock->rsize = bind_http_esp8266(&out);
 
         *success = 1;
 		return;
@@ -120,9 +109,9 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 		// /favicon
 		memset(http, '\0', WRES_FAVICON_LEN);
 
-		mkHTMLx(WSUPP_NOT_FOUND, HTTP_NOT_FOUND);
-        sock->rsize = http_conf.size_str;
-	    esp8266_load_html(http_conf.http, http_conf.size);
+		wifi_supplicant_http(&out, HTTP_404, WEBAPP_NOT_FOUND);
+		sock->rsize = bind_http_esp8266(&out);
+
         *success = 1;
 		return;
 		
@@ -132,11 +121,11 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 		memset(http, '\0', WRES_SETWiFi_LEN);
 		char i = WRES_SETWiFi_LEN;
 
-		mkHTMLx(WEBAPP_ALLDONE, HTTP_OK);
-		sock->rsize = http_conf.size_str;
-		esp8266_load_html(http_conf.http, http_conf.size);
+		wifi_supplicant_http(&out, HTTP_200, WEBAPP_ALLDONE);
+		sock->rsize = bind_http_esp8266(&out);
+		
 		*success = 1;
-
+		
 		// Fast cleaning of the SSID and Password buffer
 		snp->size = 0;
 		snp->ssidNpassword[0] = 0;
@@ -175,6 +164,7 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 			}
 
 		}
+		return;
 	}
 }
 
@@ -182,14 +172,14 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 #define iOW_LEN				1
 #define TMP_RESOURCE_SIZE	700
 
-static void IPAPI_process_result(uint8_t *success, char *tmp, void *arg) {	
+static void IPAPI_process_result(uint8_t *success, char *json, void *arg) {	
 	uint16_t msg_size;
 	char *IPAPI_VALS[IPAPI_JSON_MEMBERS];
 	unsigned short IPAPI_VALS_LEN[IPAPI_JSON_MEMBERS];
 	char **ow_resource = (char **)arg;
 	char *ow_http = ow_resource[iOW_STR];
     
-	if (IPAPI_get_location_PtrLen(tmp, IPAPI_VALS, IPAPI_VALS_LEN)) {
+	if (IPAPI_get_location_PtrLen(json, IPAPI_VALS, IPAPI_VALS_LEN)) {
         *success = 1;
         return;
     }
@@ -234,11 +224,11 @@ static void IPAPI_process_result(uint8_t *success, char *tmp, void *arg) {
 	*success = 0;
 }
 
-static void OWAPI_process_result(uint8_t *success, char *tmp, void *arg) {
+static void OWAPI_process_result(uint8_t *success, char *json, void *arg) {
 	char *weather[OWAPI_PARAMS_COUNT];
 	unsigned short sizes[OWAPI_PARAMS_COUNT];
     
-	if(OWAPI_get_weather(tmp, weather, sizes)) {
+	if(OWAPI_get_weather(json, weather, sizes)) {
         *success = 1;
         return;
     }
@@ -266,12 +256,12 @@ static void OWAPI_process_result(uint8_t *success, char *tmp, void *arg) {
 	*success = 0;
 }
 
-static void spotify_token_processor(uint8_t *success, char *http, void *arg) {
+static void spotify_token_processor(uint8_t *success, char *json, void *arg) {
 	char *tokens_ptr[SPOTIFY_TOKEN_COUNT];
 	uint16_t sizes[SPOTIFY_TOKEN_COUNT];
 	char **token = (char **)arg;
 
-	if(spotify_get_token(http, tokens_ptr, sizes)) {
+	if(spotify_get_token(json, tokens_ptr, sizes)) {
 		*success = 1;
 		return;
 	}
@@ -291,7 +281,7 @@ static void spotify_token_processor(uint8_t *success, char *http, void *arg) {
 
 #define TRACK_INFO_SIZE	38
 
-static void spotify_track_processor(uint8_t *success, char *http, void *arg) {
+static void spotify_track_processor(uint8_t *success, char *json, void *arg) {
 	char *track_ptr[SPOTIFY_TRACK_COUNT];
 	uint16_t sizes[SPOTIFY_TRACK_COUNT];
 	char track_info[TRACK_INFO_SIZE];
@@ -301,8 +291,8 @@ static void spotify_track_processor(uint8_t *success, char *http, void *arg) {
 		UI_set_track("Spotify Player off");
 		return;
 	}
-
-	if(spotify_get_track(http, track_ptr, sizes)) {
+	*success = spotify_get_track(json, track_ptr, sizes);
+	if(*success) {
 		*success = 1;
 		return;
 	}
@@ -339,10 +329,16 @@ enum ServersID {
 	SPOTIFY_CODE,
 };
 
-void server_function(struct StateS *s, enum ServersID server_id) {
+void server_function(struct StateS *s, enum ServersID _server_id) {
     static struct Socket socket;
     static SSIDnPSWD_t wifi_credentials;
 	static enum AppServerState server_state = SERVER_CONF;
+	static enum ServersID server_id = WIFI_SUPPLICANT;
+
+	if(_server_id != server_id) {
+		server_id = _server_id;
+		server_state = SERVER_CONF;
+	}
 	
 	switch(server_id) {
 	case WIFI_SUPPLICANT:
@@ -682,7 +678,7 @@ NetEventHandler(struct StateS *s, uint8_t *server_id, uint8_t * client_id)
 }
 
 /*
- * This is called by a another Tasks that will restart the APP FSM to 
+ * This is called by other Tasks that will restart the APP FSM to 
  * update the weather info.
  */
 void spotify_update_player(void) {

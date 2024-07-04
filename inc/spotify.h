@@ -6,13 +6,12 @@
 
 #include <string.h>
 
-/**** Supplicant ****/
+/* Server: Supplicant {												*/
 #define SPOTY_REQ				"/spotify"
-#define SPOTY_REQ_LEN			8
+#define SPOTY_REQ_LEN			strlen(SPOTY_REQ)
 #define SPOTY_REQ_CALLBACK		"/spotify_code?code="
-#define SPOTY_REQ_CALLBACK_LEN	19
+#define SPOTY_REQ_CALLBACK_LEN	strlen(SPOTY_REQ_CALLBACK)
 
-#define SPOTY_RESP				0
 #define SPOTY_HTML0		\
 "<head><title>Erika Spotify</title></head>"\
 "<body>"\
@@ -33,16 +32,17 @@
 	"</center>"\
 "</body>"\
 
-#define SPOTY_HTML	SPOTY_HTML0 SPOTIFY_CLIENT_ID SPOTY_HTML1
+#define SPOTY_HTML		SPOTY_HTML0 SPOTIFY_CLIENT_ID SPOTY_HTML1
+#define SPOTY_HTML_SZ	(sizeof(SPOTY_HTML) - 3)	// 2 is due to "%s"
 
-#define SPOTY_CALLBACK_RESP		1
+char spotify_on_root(struct outHTTP *http, char *ip);
 
-char mkHTTP_SpotySupplicant(struct Http *http, char *ipv4);
+/* }																*/
 
-/**** Client ****/
+/* Client {															*/
 	/*** Token Request ***/
 #define	SPOTIFY_AUTH_HOST		"\"accounts.spotify.com\",443"
-#define	SPOTIFY_AUTH_LEN		26
+#define	SPOTIFY_AUTH_LEN		(sizeof(SPOTIFY_AUTH_HOST) - 1)
 #define	SPOTIFY_AUTH_HEAD		"POST /api/token HTTP/1.1\r\n"\
 								"Host: accounts.spotify.com\r\n"\
 								"User-Agent: ERIKA RTOS/ESP8266/v1.0\r\n"\
@@ -77,7 +77,7 @@ char spotify_get_token(char *http, char **vals, uint16_t *sizes);
 
 	/*** API ***/
 #define SPOTIFY_API				"\"api.spotify.com\",443"
-#define SPOTIFY_API_LEN			21
+#define SPOTIFY_API_LEN			(sizeof(SPOTIFY_API) - 1)
 
 #define SPOTIFY_GET_PLAYER		"GET /v1/me/player/currently-playing?market=IT "
 #define SPOTIFY_API_HEAD		"HTTP/1.1\r\n"\
@@ -110,5 +110,5 @@ enum {
 #define SPOTIFY_TIME_DELIM		','
 
 char spotify_get_track(char *json, char **vals, uint16_t *sizes);
-
+/* }																*/
 #endif

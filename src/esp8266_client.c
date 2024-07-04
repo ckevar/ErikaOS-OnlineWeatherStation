@@ -35,7 +35,7 @@ void fsm_client(struct StateS *state, struct Socket *so) {
 
     nx_state = SUBSTATE(*state->nx_state);
     switch(nx_state) {
-	// case ESP8S_CONNECT:
+	
 	case ESP8S_CONNECT_SSL:
 		esp8266_purge_link_buff();
 		esp8266_ssl(so->link, so->domain_port, so->dsize);

@@ -6,7 +6,7 @@
                                                        /*1: channel,
                                                         * 4: WPA,WPA2.PSK Encryption
                                                         */
-#define AP_CREDENTIALS_LEN  33 
+#define AP_CREDENTIALS_LEN  (sizeof(AP_CREDENTIALS) - 1)
 
 /******* Server Config *****/
 #define AP_WITH_SERVER      // Access Point with Server

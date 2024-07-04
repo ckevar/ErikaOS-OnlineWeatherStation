@@ -17,7 +17,8 @@ uint16_t LUT_link_pullin(enum ESP8NetManagerState supers) {
         return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
 }
 
-uint8_t app_http_process(enum ESP8NetManagerState supers, \
+uint8_t 
+app_http_process(enum ESP8NetManagerState supers, \
 		void (*callback)(uint8_t*, char*, void*), \
 		void *arg)
 {

@@ -75,6 +75,8 @@
 #define WEBAPP_ALLDONE_H_LEN		3
 /********************************************************************/
 
-char mkHTTP_WSupplicant(struct Http *http);
+#define wifi_supplicant_http(http, method, body)	\
+	outHTTP_basice_header(http, method);\
+	outHTTP_body(http, body##_STR, body##_LEN)
 
 #endif

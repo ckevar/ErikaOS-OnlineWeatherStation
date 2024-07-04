@@ -323,13 +323,75 @@ static void esp8266_rx_N_pop(uint16_t it) {
 	}
 }
 
+static uint16_t es8266_rx_pop_til(char const *str, int const size) {
+	char *sn;
+	int ni, i;	
+	i = esp8.read - esp8.data;
+
+goto_FUNC_es8266_rx_pop_til_FILE_esp8266_driver:
+	ni = (i + size + 1) % ESP8266_BUFF_RX_LEN;
+	for(sn = (char *)str; *(esp8.data + ni - 1) && *sn;) {
+		i++;
+		esp8266_rx_pop(); 
+		if(*esp8.read != *sn) {
+			goto goto_FUNC_es8266_rx_pop_til_FILE_esp8266_driver;
+		}
+		sn++;
+	}
+
+	esp8266_rx_pop();
+
+	if (*sn != 0) {
+		return 1;
+	}
+
+	/* Found it */
+	return 0;
+}
+
+#define MAX_TICKOUT			65535    // Experimental value, it's like time out
+#define RECOMMENDED_TICKOUT	2048
+static uint16_t 
+esp8266_rx_wait_ahead(uint16_t const size, uint16_t const tickout) {
+	/* This doesn't need performance, instead we need to buy some time
+	 * in order to catch the data, that's why the variables arent tag 
+	 * as *register*. So basically, in ipd, it's just there to buy some
+	 * time and in content length to really wait. */
+	char *sc;
+	uint16_t multi_use;
+
+    multi_use = esp8.read - esp8.data;
+    multi_use = (multi_use + size) % ESP8266_BUFF_RX_LEN;
+	
+	if (!multi_use) 
+		multi_use = esp8.size;
+
+	sc = esp8.data + multi_use - 1;
+    for(multi_use = 0; (*sc == 0) && (multi_use < tickout); multi_use++);
+
+	if(*sc == 0)
+		return size;
+
+	return 0;
+}
+
+#define esp8266_rx_to_uint(num)	\
+	num = 0; \
+	while(*esp8.read >= '0' && *esp8.read <= '9') {\
+		num = num * 10 + *esp8.read - 48;\
+		esp8266_rx_pop();\
+	}\
 
 /*
- * gets method on the html arrival data, only GET and POST supported
+ * gets method on the http arrival data, only GET and POST supported
  */
-
+char tmp_test[128];
 static unsigned char esp8266_http_get_method(void) {
 	uint8_t method;
+	
+	if (*esp8.read < 'A' || *esp8.read > 'Z')
+		return HTTP_Method_UNKNOWN;
+
 	method = *esp8.read;
 	esp8266_rx_N_pop(3);
 	method ^= *esp8.read;
@@ -361,138 +423,78 @@ static uint16_t esp8266_http_get_Resource(char *res) {
 	return i + 1;
 }
 
-static unsigned short esp8266_http_get_ContentLength(void) {
-	static unsigned short sizecmp_offset = 0;
-	unsigned short dist;
-	unsigned short sizecmp;
-	char *content_length = HTTP_CONTENT_LEN_STR;
+static uint16_t esp8266_http_get_ContentLength(void) {
+	uint16_t size;
 
-	while((sizecmp_offset < HTTP_CONTENT_LEN_LEN) && (*esp8.read != 0)) {
+	if(es8266_rx_pop_til(HTTP_CONTENT_LEN_STR, strlen(HTTP_CONTENT_LEN_STR)))
+		return 0;
+	
+	esp8266_rx_wait_ahead(5, MAX_TICKOUT);
 
-		dist = esp8.eof - esp8.read + 1;
+	esp8266_rx_to_uint(size);
 
-		sizecmp = (dist > HTTP_CONTENT_LEN_LEN) \
-                 ? HTTP_CONTENT_LEN_LEN - sizecmp_offset \
-                 : dist;
-
-		if (memcmp(esp8.read, content_length + sizecmp_offset, sizecmp) == 0){
-			sizecmp_offset += sizecmp; 
-			esp8266_rx_N_pop(sizecmp);
-		
-		} else {
-			sizecmp_offset = 0;
-            esp8266_rx_pop();
-		}
-	}
-
-	if (sizecmp_offset == HTTP_CONTENT_LEN_LEN) {
-		sizecmp = 0;
-
-		while(*esp8.read != '\r') {
-			sizecmp = sizecmp * 10 + *esp8.read - 48;
-			esp8266_rx_pop();
-		}
-
-		sizecmp_offset = 0;
-		return sizecmp;
-	}
-
-	return 0;
+	return size;
 }
 
-static void esp8266_html_skip_header(void) {
-	uint16_t rns = 0;
-	uint8_t anon = 1;
 
-	while(rns < 4) {
-		rns = ((*esp8.read == '\r') || (*esp8.read == '\n')) \
-			  ? rns + 1 \
-			  : 0;
-		esp8266_rx_pop();
-	}
-	
+static void esp8266_http_skip_header(void) {
+	es8266_rx_pop_til("\r\n\r\n", 4);
+
 	/*
-	 * ESP8266's message starts with "\r\n\r\n", so in case it's not
-	 * the header that ended but and error due to transmition or 
-	 * splitted data:
+	 * ESP8266's message starts with "\r\n\r\n", as well as HTTP header
+	 * ending. So, in case it's not the header that ended but and error
+	 * due to transmition or splitted data:
 	 *	"\r\n\r\nERROR\r\n" or "\r\n\r\n+IPD,X,X:"	
 	 * */
 
 	if (*esp8.read == 'E') {
-		rns = 7;
-		while(rns && anon == 1) {
-			anon = (*esp8.read == 'E') || (*esp8.read == 'R') ||
-				(*esp8.read == 'O') || (*esp8.read == '\r') ||
-				(*esp8.read == '\n') 
-				? 1
-				: 0;
-			rns--;
-			esp8266_rx_pop();
-		}
-
-		if (rns == 0 && anon == 1)
-			esp8_status.http = HTTP_522; // Connection Time-out
+		if(es8266_rx_pop_til("Error\r\n", 7) == 0) 
+			esp8_status.http = HTTP_522;	// Connection Time-Out
 
 		return;
 	}
 	if (*esp8.read == '+') {
-		rns = 5;
-		while(rns && anon == 1) {
-			anon = (*esp8.read == '+') || (*esp8.read == 'I') ||
-				(*esp8.read == 'P') || (*esp8.read == 'D') ||
-				(*esp8.read == ',') 
-				? 1
-				: 0;
-			rns--;
-			esp8266_rx_pop();
-		}
-
-		if (rns == 0 && anon == 1) {
+		if(es8266_rx_pop_til("+IPD,", 5) == 0) {
 			esp8_status.http = HTTP_520;	// Something went wrong with header
 
-			while(*esp8.read != 0) 
+			while(*esp8.read != 0) {
 				esp8266_rx_pop();
+			}
 		}
 
 	}
 }
 
+uint16_t test_rns;
 static void esp8266_http_get_Content(char *content, unsigned short len) {
-	uint16_t rns = 0;
-
-	// If there's plenty of available space in the buffer, the content
-	// can be copied out in a single big chunk, otherwise, it gotta be
-	// copied in two chuncks.
-	rns = esp8.eof - esp8.read + 1;
-
-	if (len >= rns) {
-		memcpy(content, esp8.read, rns);
-		memset(esp8.read, 0, rns);
-		esp8.read = esp8.data;
-		content += rns;
-		len -= rns;		
-	}
-
-	memcpy(content, esp8.read, len);
-	memset(esp8.read, 0, len);
-	esp8.read += len;
-	content += len;
-
-	rns = 0;
-	/* When the webserver is throwing too much data, it arrives in chunks
-	 * and each chunk has a header, so far that header was being ingnored
-	 * and count as part of the content, so when the content is copied 
-	 * out there are some remaining actual content that has to be copied
-	 * as well, for future, the header of the chunks has to be parsed,
-	 * so far this copying of the remaining works */
-	while (*esp8.read != 0 && rns < 4) {
-		rns = ((*esp8.read == '\r') || (*esp8.read == '\n')) \
-			  ? rns + 1 \
-			  : 0;
+	uint16_t rns;
+	test_rns = 0;
+	while(len--) {
 		*content = *esp8.read;
 		esp8266_rx_pop();
 		content++;
 	}
+	rns = 0;
+
+	/* When the webserver (not this but such as spotify's) is throwing
+	 * too much data, it arrives in chunks and each chunk has a header,
+	 * so far that header was being ingnored and count as part of the
+	 * content, so when the content is copied out, there are some 
+	 * remaining actual content that has to be copied as well, for 
+	 * future, the header of the chunks has to be parsed, so far this 
+	 * copying of the remainings work								*/
+	
+	while (*esp8.read != 0) {
+		/*rns = ((*esp8.read == '\r') || (*esp8.read == '\n'))
+			  ? rns + 1 
+			  : 0;
+		*/
+		*content = *esp8.read;
+		esp8266_rx_pop();
+		content++;
+		test_rns++;
+	}
+
 	*content = 0;
 }
 
@@ -521,11 +523,27 @@ static void http_get_code(void) {
  * 		<method> /<resource> HTTP<version>
  * 		<header>
  ********************************************************/
-#define MAX_TICKOUT     2048    // Experimental value
+
+static int16_t esp8266_http_get_ContentLength_and_skip_header(void) {
+	int16_t content_length;
+	
+	content_length = esp8266_http_get_ContentLength();
+	if(content_length == 0)
+		return -2;
+
+	esp8266_http_skip_header();
+
+	if (esp8_status.http != HTTP_200) {
+		esp8_status.cmd = ESP8_DATA_PULLIN;
+		return 0;
+	}
+	return content_length;
+}
 
 static int16_t esp8266_http_parse(char *out_buff) {
 	enum HTTPMethods rest_method = HTTP_Method_UNKNOWN; 
-	uint16_t cursor, content_length, esp8_i, tickout;
+	static int16_t content_length;
+	uint16_t cursor, esp8_i, tickout;
 	
 	rest_method = esp8266_http_get_method();
 	tickout = 0;
@@ -534,11 +552,7 @@ static int16_t esp8266_http_parse(char *out_buff) {
 	switch(rest_method) {
 	case HTTP_Method_GET:
 		cursor = esp8266_http_get_Resource(out_buff);
-		esp8266_html_skip_header();
-
-		if(tickout == MAX_TICKOUT)
-			return -1;
-
+		esp8266_http_skip_header();
 		esp8_status.cmd = ESP8_DATA_PULLIN;
 		return 0;
 
@@ -552,29 +566,16 @@ static int16_t esp8266_http_parse(char *out_buff) {
 			http_get_code();
 
 		if (esp8_status.http != HTTP_200) {
-			esp8266_html_skip_header();
+			esp8266_http_skip_header();
 			esp8_status.cmd = ESP8_DATA_PULLIN;
 			return 0;
 		}
 
-		content_length = esp8266_http_get_ContentLength();
-		esp8266_html_skip_header();
+		content_length = esp8266_http_get_ContentLength_and_skip_header();
+		if(content_length <= 0)
+			return content_length;
 
-
-		if (esp8_status.http != HTTP_200) {
-			esp8_status.cmd = ESP8_DATA_PULLIN;
-			return 0;
-		}
-
-		/* An approximation to know if all data from request has
-		 * already arrived */
-		esp8_i = esp8.read - esp8.data;
-		esp8_i = (esp8_i + content_length) % ESP8266_BUFF_RX_LEN;
-
-		while((*(esp8_i + esp8.data - 1) == 0) && (tickout < MAX_TICKOUT))
-			tickout++;
-
-		if(tickout == MAX_TICKOUT)
+		if (esp8266_rx_wait_ahead(content_length, RECOMMENDED_TICKOUT))
 			return content_length;
 
 		esp8266_http_get_Content(out_buff + cursor, content_length);
@@ -583,7 +584,6 @@ static int16_t esp8266_http_parse(char *out_buff) {
 
 		return 0;
 	}
-
 	return -1;
 }
 
@@ -591,19 +591,19 @@ static int16_t esp8266_http_parse(char *out_buff) {
  * IPD format shall be:
  * 		+IPD,<link id>,<data length>:<data>
  *****************************************************/
-static unsigned short esp8266_ipd_parse(char *out_buff) {
+static uint16_t esp8266_ipd_parse(char *out_buff) {
 	unsigned char link_queue;
-	unsigned short ipd_len = 0;
+	uint16_t ipd_len;
     char link;
 
 	link_queue = 0;
-
-    // FIXME: *esp.read can lead to segmentation fault.
-	if (*(esp8.read + 2) == ',') {
+	while(esp8266_rx_wait_ahead(15, MAX_TICKOUT)); // this is just to wait for 
+												   // some data ahead
+	if (*(esp8.read + 1) == ',') {
 		// >> This is for Multiple Connection <<
 		
 		// "-47" because ascii "1" (=49), the link 0 wil be 1
-		link = *(esp8.read + 1) - 47;
+		link = *esp8.read - 47;
 
 		while(ESP8266_link.open[link_queue] != link && link_queue < 4) 
 			link_queue++;
@@ -615,25 +615,26 @@ static unsigned short esp8266_ipd_parse(char *out_buff) {
 		
 		ESP8266_link.open[link_queue] = link; 
 		
-
-		// includes both commas: ",<link_id:8bits>,"
-		esp8266_rx_N_pop(3);
+		// includes both commas: "<link_id:8bits>,"
+		esp8266_rx_N_pop(2);
 
 	} else {
 		// >> This is for Single Connection <<
 		ESP8266_link.open[link_queue] = 1;  	
-		esp8266_rx_pop(); 	// includes only one comma: ","
 	}
 
 	*out_buff = ESP8266_link.open[link_queue] - 1;
 
 	/* get IPData length */
-	while(*esp8.read != ':') {
-		ipd_len = ipd_len * 10 + *esp8.read - 48;
-		esp8266_rx_pop(); 
-	}
+	esp8266_rx_to_uint(ipd_len);
+	if(*esp8.read == 0)
+		return ipd_len;
+
 	esp8266_rx_pop();
-	return ipd_len;
+	if(esp8266_rx_wait_ahead(ipd_len, MAX_TICKOUT))
+		return ipd_len;
+	
+	return 1;
 }
 
 /*****************************************************
@@ -673,76 +674,89 @@ static void esp8266_cipstate_parse(void) {
 	*ch = 0;
 }
 
-static uint8_t on_closing_link() {
+static uint8_t on_closing_link(void) {
     uint8_t i;
     
     if(esp8_status.cmd == ESP8_DATA_PULLIN)
         return 1;
 
-	esp8_status.cmd = ESP8_LINK_CLOSED;
     esp8_status.tcp |= TCP_PORT_CLOSE;
     
     i = 0;
     while(ESP8266_link.open[i] != esp8_status.link && (i < 5)) 
         ++i;
 
-    if (i == 5) {
-        esp8_status.cmd = ESP8_UNKNOWN;
-        return 0;
-    }
+    if (i == 5)
+		return 0;
 
 	ESP8266_link.open[i] = 0; // 0,CLOSED
     return 0;
 }
 
-static int16_t esp8266_wait_for_IPData(char *out_buff, const int16_t content_length) {
-	uint16_t tickout, esp8_i;
+static int16_t
+esp8266_wait_for_IPData(char *out_buff, const int16_t content_length)
+{
+	if(esp8266_rx_wait_ahead(content_length, RECOMMENDED_TICKOUT))
+		return content_length;
 
-	tickout = 0;
-    esp8_i = esp8.read - esp8.data;
-    esp8_i = (esp8_i + content_length) % ESP8266_BUFF_RX_LEN;
-	
-	if (!esp8_i) 
-		esp8_i = esp8.size;
-
-    while((*(esp8.data + esp8_i - 1) == 0) && (tickout < MAX_TICKOUT))
-		tickout++;
-
-	if(tickout == MAX_TICKOUT)
-        return content_length;
-	
 	esp8266_http_get_Content(out_buff, content_length);
     esp8_status.cmd = ESP8_DATA_PULLIN;
 	return 0;
 }
 
-static uint8_t check_on_ipdata(uint8_t *ipd_status, char *buff_link) {
+static uint8_t check_on_ipdata(struct ESP8IPData *ipd) {
 	static int16_t content_length = 0;
 
-	switch(*ipd_status) {
+	switch(ipd->status) {
+	
 	case IPData_DUMMY:
-		*ipd_status = IPData_OK2PARSE;
+		ipd->status = IPData_DUMMY2;
+		return 1;
+	
+	/* When large amaount of data is being received, the parser is faster
+	 * that the USART transmission so, there are elements of the HTTP
+	 * that are not being found */
+	case IPData_DUMMY2:
+		ipd->status = IPData_OK2PARSE;
 		return 1;
 	
 	case IPData_OK2PARSE:
-		content_length = esp8266_http_parse(buff_link);
+
+		content_length = esp8266_http_parse(ipd->buff_link);
 		
-		if (content_length == 0)
-			*ipd_status = IPData_UKNOWN;
+		switch(content_length) {
+		case 0:
+			ipd->status = IPData_UKNOWN;
+			break;
 
-		else if (content_length > 0)
-			*ipd_status = IPData_WAIT;
-
-		else {
+		case -1:
 			esp8_status.cmd = ESP8_ERROR;
-			*ipd_status = IPData_UKNOWN;
+			ipd->status = IPData_UKNOWN;
+			break;
+
+		case -2:
+			ipd->status = IPData_WAIT_FOR_CONTENT_LENGTH;
+			break;
+		
+		default:  // case: content_length > 0 
+			ipd->status = IPData_WAIT;
 		}
         
 		return 1;
 	
+	case IPData_WAIT_FOR_CONTENT_LENGTH:
+		memcpy(tmp_test, esp8.read, 20);
+		content_length = esp8266_http_get_ContentLength_and_skip_header();
+		if (content_length <= 0) {
+			esp8_status.cmd = ESP8_ERROR;
+			ipd->status = IPData_UKNOWN;
+			return 1;
+		}
+
+
 	case IPData_WAIT:
-		content_length = esp8266_wait_for_IPData(buff_link, content_length);
-		*ipd_status = content_length == 0\
+		content_length = esp8266_wait_for_IPData(ipd->buff_link, content_length);
+		ipd->status = content_length == 0
 					  ? IPData_UKNOWN
 					  : IPData_WAIT;
 		return 1;
@@ -751,10 +765,107 @@ static uint8_t check_on_ipdata(uint8_t *ipd_status, char *buff_link) {
 	return 0;
 }
 
+void esp8266_poll(void) {
+	char *tokens[] = {ESP8_TOKENS};
+	static enum ESP8Resp i = ESP8_UNKNOWN;
+	static char *token;
+	static struct ESP8IPData ipd;
+
+	if(check_on_ipdata(&ipd))
+		return;
+
+	while(*esp8.read != 0) {
+
+		switch(i) {
+		case ESP8_UNKNOWN:
+			for(i = 0; (*esp8.read != *tokens[i]) && (i < ESP8_UNKNOWN); i++);
+			token = tokens[i] + 1;
+
+			/* This holds the unmmatched character, useful when links
+			 * are closed from remote servers, the ESP8 sends: 
+			 *		<x>,CLOSED
+			 *	<x> is held */
+			if(i == ESP8_UNKNOWN)
+				esp8_status.link = ((*esp8.read & 0x0F) + 1);
+
+			break;
+		
+		default:
+			if (*esp8.read != *token++) {
+				i = ESP8_UNKNOWN;
+				continue;
+			} 
+
+			if (*token != 0)
+				break;
+			
+			switch(i) {
+			case ESP8_STATUS:
+				esp8266_rx_pop();
+				i = ESP8_UNKNOWN;
+				esp8_status.wifi = *esp8.read;
+				continue;
+
+			case ESP8_LINK_CLOSED:
+				if(on_closing_link());
+					break;
+
+				esp8266_rx_pop();
+				esp8_status.cmd = i;
+				i = ESP8_UNKNOWN;
+				break;
+		
+			case ESP8_IPData:
+				esp8266_rx_pop();
+				i = ESP8_UNKNOWN;		
+
+				ipd.size = esp8266_ipd_parse(ipd.buff_link);
+				ipd.buff_link = ESP8266_link.buffXlink[*ipd.buff_link];
+				 if (ipd.size > 0 && ipd.size <= 1000) {
+                    ipd.status = IPData_OK2PARSE;
+                } else if (ipd.size > 1000) {
+					// Just to buy some time
+					ipd.status = IPData_DUMMY;
+				}
+
+				break;
+
+			case ESP8_IP:
+				esp8266_rx_pop();
+				esp8_status.cmd = i;
+				i = ESP8_UNKNOWN;
+				esp8266_cipstate_parse();
+				break;
+			
+			case ESP8_READY:
+				ESP8266_SET_RESTART = 0;
+
+			default:
+				esp8266_rx_pop();
+				esp8_status.cmd = i;	
+				i = ESP8_UNKNOWN;
+
+			}
+
+			return;
+			
+		}
+	
+		esp8266_rx_pop();
+	}
+
+	// Skip 0s on restart
+	for(uint8_t i = 100; ESP8266_SET_RESTART && (*esp8.read == 0) && i; i--) {
+			esp8266_rx_pop();
+	}
+}
+
+/*
 #define MATCH(resp)     if (counter[resp] == resp##_LEN)
 
 #define RESET_MATCH()   esp8266_rx_pop(); \
                         memset(counter, 0, ESP8_RESP_COUNT)
+
 
 void esp8266_poll(void) {
     static uint8_t counter[ESP8_RESP_COUNT] = {0};
@@ -764,7 +875,7 @@ void esp8266_poll(void) {
 
 	if(check_on_ipdata(&ipdata_status, buff_link))
 		return;
-	
+
 	while(*esp8.read != 0) {
 
         switch(*esp8.read) {
@@ -774,6 +885,7 @@ void esp8266_poll(void) {
             return;
 
         case '+': // "+IPD", "+CIPSTA:ip"
+
             counter[ESP8_IPData]++;
             counter[ESP8_IP]++;
             break;
@@ -839,8 +951,10 @@ void esp8266_poll(void) {
             MATCH(ESP8_IPData) {
                 RESET_MATCH();
                 esp8_status.cmd = ESP8_UNKNOWN;
+
 				ipd_len = esp8266_ipd_parse(buff_link);
                 buff_link = ESP8266_link.buffXlink[*buff_link];
+
                 if (ipd_len > 0 && ipd_len <= 1000) {
                     ipdata_status = IPData_OK2PARSE;
                     return;
@@ -979,3 +1093,4 @@ void esp8266_poll(void) {
 	}
 
 }
+*/
