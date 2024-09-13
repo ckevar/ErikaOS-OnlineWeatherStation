@@ -16,7 +16,7 @@ char *json_get_value_ptr(char *json, char *key, unsigned short key_len) {
 
 goto_FUNC_json_get_value_ptr_FILE_json_parser:
 	for (c = key; *json; json++) {
-		if (*json == '"' && *(json + key_len + 1) == '"') {
+		if (('"' == *json) && ('"' == *(json + key_len + 1))) {
 			sholder = ++json;
 		
 			while((*json++ == *c++) && (*c != 0));
@@ -52,7 +52,7 @@ unsigned char json_query_mulKey_ValPtrLen(char *json, int16_t n,\
 
 goto_FUNC_json_query_mulKey_ValPtrLen_FILE_json_parser:
 	for (c = key[n]; *json; json++) {
-		if ((*json == '"') && (*(json + key_len[n] + 1) == '"')) {
+		if (('"' == *json) && ('"' == *(json + key_len[n] + 1))) {
 			sholder = ++json;	// skip '"'
 
 			while ((*json++ == *c++) && (*c != 0));

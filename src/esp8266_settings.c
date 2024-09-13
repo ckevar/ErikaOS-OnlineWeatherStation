@@ -5,7 +5,7 @@
 #include "WidgetConfig.h"
 #include "net_credentials_conf.h"
 
-uint16_t LUT_OK_powerup(enum ESP8InitialSetup prev_subs) {
+uint16_t LUT_OK_initial_setup(enum ESP8InitialSetup prev_subs) {
     uint16_t LUT[ESP8_INITIAL_SETUP_COUNT] = {
         [ESP8S_RESTART]     = MKSTATE(ESP8SS_ON_HOLD, 0),
         [ESP8S_CHECK_DEV]   = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_STATION_MODE),
@@ -13,13 +13,13 @@ uint16_t LUT_OK_powerup(enum ESP8InitialSetup prev_subs) {
         [ESP8S_MULTI_CONN]  = MKSTATE(ESP8SS_NETSTATUS, 0),
     };
 
-    if (prev_subs > ESP8_INITIAL_SETUP_COUNT)
+    if (prev_subs >= ESP8_INITIAL_SETUP_COUNT)
         return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
 
     return LUT[prev_subs];
 }
 
- uint16_t LUT_timeout_powerup(enum ESP8InitialSetup prev_subs) {
+ uint16_t LUT_timeout_initial_setup(enum ESP8InitialSetup prev_subs) {
     uint16_t LUT[ESP8_INITIAL_SETUP_COUNT] = {
         [ESP8S_RESTART]     = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART),
         [ESP8S_CHECK_DEV]   = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART),
@@ -27,13 +27,13 @@ uint16_t LUT_OK_powerup(enum ESP8InitialSetup prev_subs) {
         [ESP8S_MULTI_CONN]  = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV),
     };
 
-    if (prev_subs > ESP8_INITIAL_SETUP_COUNT) 
+    if (prev_subs >= ESP8_INITIAL_SETUP_COUNT) 
         return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV);
     
     return LUT[prev_subs];
 }
 
-uint16_t LUT_on_err_powerup(enum ESP8InitialSetup prev_subs) {
+uint16_t LUT_on_err_initial_setup(enum ESP8InitialSetup prev_subs) {
     uint16_t LUT[ESP8_INITIAL_SETUP_COUNT] = {
         [ESP8S_RESTART]     = MKSTATE(ESP8SS_ON_HOLD, 0),
         [ESP8S_CHECK_DEV]   = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART),
@@ -41,14 +41,14 @@ uint16_t LUT_on_err_powerup(enum ESP8InitialSetup prev_subs) {
         [ESP8S_MULTI_CONN]  = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV)
     };
 
-    if(prev_subs > ESP8_INITIAL_SETUP_COUNT)
+    if(prev_subs >= ESP8_INITIAL_SETUP_COUNT)
         return MKSTATE(ESP8SS_ERROR, 0);
 
     return LUT[prev_subs];
 }
 
 
-void fsm_powerup(struct StateS *state) {
+void fsm_initial_setup(struct StateS *state) {
     enum ESP8InitialSetup nx_state;
     nx_state = SUBSTATE(*state->nx_state);
     

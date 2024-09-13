@@ -19,7 +19,7 @@ uint16_t LUT_OK_server(enum ESP8ServerState prev_subs) {
         [ESP8S_SWRITE]          = MKSTATE(ESP8SS_SERVER, ESP8S_LISTENING),
 		[ESP8S_SERVER_OFF]		= MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART),
     };
-    if (prev_subs > MAX_OK_ON_SERVER)
+    if (prev_subs >= MAX_OK_ON_SERVER)
         return MKSTATE(0,0);
 
     return LUT[prev_subs];
@@ -53,7 +53,7 @@ void fsm_server(struct StateS *state, struct Socket *ss) {
         ss->link = app_http_process(ESP8SS_SERVER, ss->callback, (void *) ss);
         UI_WriteState("Reading");
 
-		if (ss->rsize == 0)
+		if (0 == ss->rsize)
 			break;
 	
 	case ESP8S_RMALLOC_S:

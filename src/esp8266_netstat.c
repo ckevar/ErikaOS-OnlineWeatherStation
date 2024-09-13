@@ -45,8 +45,8 @@ uint16_t on_WiFiStatus(const enum ESP8NetstatState prev_subs, char *wifi_state) 
 
 	static char attempts = 0;
 
-	if (prev_subs == ESP8S_IFCONFIG) {
-		if (memcmp(ESP8266_IPv4.ip, "0.0.0.0", 7) == 0) {
+	if (ESP8S_IFCONFIG == prev_subs) {
+		if (0 == memcmp(ESP8266_IPv4.ip, "0.0.0.0", 7)) {
 
 			*wifi_state = WiFi_NO_CONNECTED;
 			attempts++;

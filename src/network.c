@@ -26,10 +26,10 @@ static uint16_t LUT_onOK(struct StateS *s) {
 
 	switch (supers) {
     case ESP8SS_INITIAL_SETUP:
-        return LUT_OK_powerup(SUBSTATE(*s->state));
+        return LUT_OK_initial_setup(SUBSTATE(*s->state));
 
     case ESP8SS_NETSTATUS:
-        if(SUBSTATE(*s->state) == ESP8S_NETSTAT)
+        if(ESP8S_NETSTAT == SUBSTATE(*s->state))
             return LUT_OK_netstat(SUPERSTATE(*s->state));
 
         return MKSTATE(ESP8SS_ON_HOLD, 0);
@@ -100,7 +100,7 @@ static uint16_t fsm_on_waiting_state(struct StateS *s) {
     case ESP8_READY:
         esp8_status.cmd = ESP8_UNKNOWN;
 
-		if (SUPERSTATE(*s->state) == ESP8SS_AP)
+		if (ESP8SS_AP == SUPERSTATE(*s->state))
 		    return MKSTATE(ESP8SS_AP, ESP8S_ENABLE_AP);
 
         // else
@@ -120,7 +120,7 @@ static short fsm_on_err_fail(struct StateS *s) {
     switch(supers) {
 
     case ESP8SS_INITIAL_SETUP:
-        return LUT_on_err_powerup(SUBSTATE(*s->state));
+        return LUT_on_err_initial_setup(SUBSTATE(*s->state));
 
 	case ESP8SS_STATION_CREDENTIALS:
 		esp8_status.wifi = WiFi_NO_CONNECTED;
@@ -145,10 +145,10 @@ static short fsm_on_timeout(unsigned short prev_state) {
 
     switch(supers) {
     case ESP8SS_INITIAL_SETUP:
-        return LUT_timeout_powerup(SUBSTATE(prev_state));
+        return LUT_timeout_initial_setup(SUBSTATE(prev_state));
 
     case ESP8SS_CLIENT:
-		if (esp8_status.http == HTTP_200)
+		if (HTTP_200 == esp8_status.http)
 			return MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
 
         return MKSTATE(ESP8SS_NETSTATUS, ESP8S_CHECK_DEV);
@@ -171,14 +171,14 @@ __attribute__((weak)) void client_function(struct StateS *s, uint8_t *client_id)
 	 * It is adviced to implement a double state FSM here, in order to
 	 * avoid definitions in a repetitive way.
 	 *
-	sock.link = 0,
-    sock.domain_port = "\"example.com\",80",	// Port 443 is not recommended
-    sock.dsize = 16,							// Length of (domain port)
-    sock.request = "GET / HTTP/1.1\r\n<someheader>",// HTTP header
-    sock.rsize = "16",							// Length in str of (HTTP header)
-    sock.callback = &foo,						// Callback function that process
+	 * sock.link = 0,
+     * sock.domain_port = "\"example.com\",80",	// Port 443 is not recommended
+     * sock.dsize = 16,							// Length of (domain port)
+     * sock.request = "GET / HTTP/1.1\r\n<someheader>",// HTTP header
+     * sock.rsize = "16",							// Length in str of (HTTP header)
+     * sock.callback = &foo,						// Callback function that process
 												// the server's reply
-    sock.arg = NULL;							// Argument for the callback function
+     * sock.arg = NULL;							// Argument for the callback function
 	
 	 * foo shall be defined as:
 	 * void foo(uint8_t *success, char *http, void *arg) {
@@ -196,10 +196,10 @@ __attribute__((weak)) void client_function(struct StateS *s, uint8_t *client_id)
 	 *	*success = 1;
 	 * }
     
-	fsm_client(s, &sock);
-	if(SUPERSTATE(s->nx_state) == ESP8SS_READY)
+	 * fsm_client(s, &sock);
+	 * if(ESP8SS_READY == SUPERSTATE(s->nx_state))
 		return MKSTATE(TO SOME OTHER STATE);
-	*/
+	 */
 	*s->nx_state = MKSTATE(ESP8SS_READY, 0);
 }
 
@@ -212,14 +212,14 @@ __attribute__((weak)) void server_function(struct StateS *s, uint8_t server_id) 
 	 * 2. Other parameters of sock are ignored or
 	 * used for the internal FSM.
 	 *
-	socket.callback = &foo;
-	socket.arg = (void *)&wifi_credentials;
+	 * socket.callback = &foo;
+	 * socket.arg = (void *)&wifi_credentials;
 	
-	fsm_server(s, &sock);
+	 * fsm_server(s, &sock);
 	
-	if (SUBSTATE(*s->state) == ESP8S_LISTENING)
+	 * if (ESP8S_LISTENING == SUBSTATE(*s->state))
 		return MKSTATE(TO SOME OTHER STATE);
-	*/
+	 */
 	*s->nx_state = MKSTATE(ESP8SS_READY, 0);
 }
 
@@ -230,7 +230,7 @@ __attribute__((weak)) void NetEventHandler(struct StateS *s, \
 }
 
 void network(void) {
-	static uint16_t nx_state = MKSTATE(ESP8SS_POWER_UP, 0);
+	static uint16_t nx_state = MKSTATE(ESP8SS_INIT, 0);
 	static uint16_t state;
     static char wifi_status = WiFi_NO_CONNECTED;
     static uint8_t timeout_waiting;
@@ -243,7 +243,7 @@ void network(void) {
 
     supers = SUPERSTATE(*nu_state.nx_state);
 	switch (supers) {
-		case ESP8SS_POWER_UP:
+		case ESP8SS_INIT:
 			nu_state.nx_state = &nx_state;
 			nu_state.state = &state;
 			nu_state.wifi_mode = &wifi_status;
@@ -252,7 +252,7 @@ void network(void) {
 			state = nx_state;		
 
         case ESP8SS_INITIAL_SETUP:
-            fsm_powerup(&nu_state);
+            fsm_initial_setup(&nu_state);
             break;
 
         case ESP8SS_NETSTATUS:
@@ -280,13 +280,10 @@ void network(void) {
             nx_state = fsm_on_waiting_state(&nu_state);
             
             timeout_waiting++;
-            if (timeout_waiting == TIMEOUT_ON_WAITING) {
+            if (TIMEOUT_ON_WAITING == timeout_waiting) {
                 timeout_waiting = 0;
                 nx_state = fsm_on_timeout(state);
             }
-
-			if(*nu_state.nx_state == 65535)
-				*nu_state.nx_state = 0;
 
 			break;
 

@@ -108,11 +108,13 @@ CPU mySystem {
 	/******* NETWORK FSM *******/
 	ALARM NETWORK_ALARM {
 		COUNTER = myCounter;
-		ACTION = ACTIVATETASK { TASK = NETWORK;};
+		ACTION = ACTIVATETASK {
+			TASK = NETWORK;
+		};
 	};
 
 	TASK NETWORK {
-		PRIORITY = 0x02;   /* Low priority */
+		PRIORITY = 0x02;   /* High priority */
 		AUTOSTART = FALSE;
 		STACK = SHARED;
 		ACTIVATION = 1;    /* only one pending activation */
@@ -122,7 +124,9 @@ CPU mySystem {
 	/******* Interface for the ESP8266 *******/
 	ALARM ESP8266_POLL_ALARM {
 		COUNTER = myCounter;
-		ACTION = ACTIVATETASK { TASK = ESP8266_POLL; };
+		ACTION = ACTIVATETASK {
+			TASK = ESP8266_POLL;
+		};
 	};
 	
 	TASK ESP8266_POLL {
@@ -136,11 +140,13 @@ CPU mySystem {
 	/******* Touch *******/
 	ALARM LCD_IN_ALARM {
 		COUNTER = myCounter;
-		ACTION = ACTIVATETASK { TASK = LCD_IN; };
+		ACTION = ACTIVATETASK {
+			TASK = LCD_IN;
+		};
 	};
 
 	TASK LCD_IN {
-		PRIORITY = 0x03;   /* Low priority */
+		PRIORITY = 0x03;   /* High priority */
 		AUTOSTART = FALSE;
 		STACK = SHARED;
 		ACTIVATION = 1;    /* only one pending activation */
@@ -150,11 +156,13 @@ CPU mySystem {
 	/******* Weather *******/
 	ALARM WEATHER_UPDATE_ALARM {
 		COUNTER = myCounter;
-		ACTION = ACTIVATETASK { TASK = WEATHER_UPDATE; };
+		ACTION = ACTIVATETASK {
+			TASK = WEATHER_UPDATE;
+		};
 	};
 
 	TASK WEATHER_UPDATE {
-		PRIORITY = 0x01;
+		PRIORITY = 0x01;	/* Low Priority */
 		AUTOSTART = FALSE;
 		STACK = SHARED;
 		ACTIVATION = 1;
@@ -164,17 +172,20 @@ CPU mySystem {
 	/******* Spotify *******/
 	ALARM SPOTIFY_UPDATE_ALARM {
 		COUNTER = myCounter;
-		ACTION = ACTIVATETASK { TASK = SPOTIFY_UPDATE; };
+		ACTION = ACTIVATETASK {
+			TASK = SPOTIFY_UPDATE;
+		};
 	};
 	
 	TASK SPOTIFY_UPDATE {
-		PRIORITY = 0x02;
+		PRIORITY = 0x02;	/* Mediuem Priority */
 		AUTOSTART = FALSE;
 		STACK = SHARED;
 		ACTIVATION = 1;
 		SCHEDULE = FULL;
 	};
-
+	
+	/* Interruption Handlers */
 	ISR systick_handler {
 		CATEGORY = 2;
 		ENTRY = "SYSTICK";

@@ -340,7 +340,7 @@ void UI_writeWeatherCurrTemp(char *curr_temp) {
 	LCD_SetColors(APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
 	LCD_DrawFullRect(135, 137, 30, 3);
 
-	if (i == 3) {
+	if (3 == i) {
 		// Draw sign + DEC + UNITS
 		LCD_SetColors(Black, Black);
 		LCD_DrawFullRect(135, 137, 30, 3);
@@ -356,10 +356,10 @@ void UI_writeWeatherCurrTemp(char *curr_temp) {
 		prev_sig = 1;
 
 	} 
-	else if (i == 2) {
+	else if (2 == i) {
 		// Check if there's a sign or a number
 
-		if (tmp[0] == '-') {
+		if ('-' == *tmp) {
 			// Clean the sign region tha goes on decimals
 			LCD_DrawFullRect(177, 110, 54, 54);
 
@@ -382,7 +382,7 @@ void UI_writeWeatherCurrTemp(char *curr_temp) {
 			DrawOff(&weather_ui[TEMP_DEC_IMG]);
 			DrawOff(&weather_ui[TEMP_UNI_IMG]);
 		}
-	} else if (i == 1) {
+	} else if (1 == i) {
 		// Clean the sign region tha goes on decimals
 		LCD_DrawFullRect(177, 110, 54, 54);	
 			

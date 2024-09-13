@@ -6,7 +6,7 @@
 #include "net_credentials_conf.h"
 
 enum ESP8NetManagerState {
-	ESP8SS_POWER_UP,
+	ESP8SS_INIT,
     ESP8SS_INITIAL_SETUP,
     ESP8SS_NETSTATUS,
     ESP8SS_AP,

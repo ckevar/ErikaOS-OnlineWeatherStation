@@ -35,7 +35,7 @@ char spotify_get_token(char *json, char **vals, uint16_t *vals_sizes) {
 	if(json_get_value_ptr(json, "error", 5) != NULL)
 		return 1;
 
-	if(json_get_value_ptr(json, "refresh_token", 13) == NULL) {
+	if(NULL == json_get_value_ptr(json, "refresh_token", 13)) {
 		json_query_mulKey_ValPtrLen(json, 1, keys + 1,\
 				keys_sizes + 1, vals + 1, vals_sizes + 1);
 		vals_sizes[iSPOTIFY_RTOKEN] = 0;
@@ -44,7 +44,7 @@ char spotify_get_token(char *json, char **vals, uint16_t *vals_sizes) {
 				keys_sizes, vals, vals_sizes);
 	}
 
-	if(vals_sizes[iSPOTIFY_TOKEN] == 0)
+	if(0 == vals_sizes[iSPOTIFY_TOKEN])
 		return 1;
 	
 	return 0;
@@ -54,7 +54,7 @@ char spotify_get_token(char *json, char **vals, uint16_t *vals_sizes) {
 
 #define JSON_get_panic(dest, src, key, key_len)		\
 	dest = json_get_value_ptr(src, key, key_len);\
-	if (dest == NULL)\
+	if (NULL == dest)\
 		return key_len;
 
 #define json_get_value(dest, destsz, src, key_id)	\
@@ -74,7 +74,7 @@ char spotify_get_track(char *json, char **vals, uint16_t *vals_sz) {
 	
 	/* Get the timestamp */
 	dest = json_get_value_ptr(json, "timestamp", 9);
-	if (dest == NULL) {
+	if (NULL == dest) {
 		dest = json;
 		vals_sz[iSPOTIFY_TIME] = 0;
 	} else {
@@ -83,7 +83,7 @@ char spotify_get_track(char *json, char **vals, uint16_t *vals_sz) {
 
 	/* Get the progress */
 	dest = json_get_value_ptr(json, "progress_ms", 11);
-	if (dest == NULL)
+	if (NULL == dest)
 		dest = json;
 	else {
 		json_get_value(vals, vals_sz, dest, SPOTIFY_PROGRESS);
@@ -97,13 +97,13 @@ char spotify_get_track(char *json, char **vals, uint16_t *vals_sz) {
 	
 	/* get the duration */
 	dest = json_get_value_ptr(dest, "duration_ms", 11);
-	if (dest == NULL) {
+	if (NULL == dest) {
 		dest = json;
 	
 		do {
 			// JSON_get_panic(vals[iSPOTIFY_SONG], dest, "name", 4);
 			vals[iSPOTIFY_SONG] = json_get_value_ptr(dest, "name" , 4);
-			if (vals[iSPOTIFY_SONG] == NULL)
+			if (NULL == vals[iSPOTIFY_SONG])
 				return 4;
 			JSON_get_panic(dest, vals[iSPOTIFY_SONG], "type", 4);
 		} while(memcmp(dest, ": \"track\",", 10));

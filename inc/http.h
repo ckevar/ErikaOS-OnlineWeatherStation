@@ -18,7 +18,7 @@ enum HTTPStatusCode {
 	HTTP_401 = '4' << 8 | 1,
 	HTTP_500 = '5' << 8,
 	HTTP_520 = '5' << 8 | 2 << 4,
-	HTTP_522 = '5' << 8 | 2 << 2 | 2,
+	HTTP_522 = '5' << 8 | 2 << 4 | 2,
 };
 
 struct outHTTP {

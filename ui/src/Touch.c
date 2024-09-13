@@ -164,11 +164,9 @@ static void state_update_extended(int *x, uint8_t *trigger) {
 }
 
 /* } */
-uint16_t x[512];
 
 unsigned char  GetTouch_TC_Async(int *xs, int *ys) {
     static uint8_t trigger = 0;
-	static uint16_t i = 0;
 	TS_STATE *pstate = NULL;
 
     pstate = IOE_TS_GetState();
@@ -177,11 +175,8 @@ unsigned char  GetTouch_TC_Async(int *xs, int *ys) {
 	    /*Read AD convert result*/
 	    *xs = IOE_TS_Read_X();
 	    *ys = IOE_TS_Read_Y();
-		x[i] = *xs;
-		i++;
-		if(i == 512)
-			i = 0;
-        /* State Update Filtering */
+        
+		/* State Update Filtering */
         state_update_extended(xs, &trigger);
 
         if ((*xs > TOUCH_AD_VALUE_MAX)

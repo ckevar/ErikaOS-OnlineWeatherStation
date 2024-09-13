@@ -16,7 +16,7 @@
 
 #include "WidgetConfig.h"
 
-#define MATCH(str, res)			if(memcmp(str, res, res##_LEN) == 0)
+#define MATCH(str, res)			if(0 == memcmp(str, res, res##_LEN))
 
 #define SPOTIFY_UPDATE_EVENT		0b001
 #define WEATHER_UPDATE_EVENT		0b010
@@ -73,7 +73,7 @@ static void app_spotify_conf(uint8_t *success, char *http, void *arg) {
 	MATCH(http, SPOTY_REQ) {
 		memset(http, 0, SPOTY_REQ_LEN);
 		
-		if(spotify_on_root(&out, ESP8266_IPv4.ip) == 0) {
+		if(0 == spotify_on_root(&out, ESP8266_IPv4.ip)) {
 			*success = 0;
 			return;
 		}
@@ -140,7 +140,7 @@ void app_http_from_WebApp(uint8_t *success, char *http,  void *arg) {
 			// Iterate until 
 			while(http[i] != '&') {
 				// Replacing '+'s by ' ' (spaces)
-				snp->ssidNpassword[snp->size] = (http[i] == '+') \
+				snp->ssidNpassword[snp->size] = ('+' == http[i]) \
                                                ? ' '\
                                                : http[i];
 				snp->size++;
@@ -286,7 +286,7 @@ static void spotify_track_processor(uint8_t *success, char *json, void *arg) {
 	uint16_t sizes[SPOTIFY_TRACK_COUNT];
 	char track_info[TRACK_INFO_SIZE];
 
-	if (esp8_status.http == HTTP_204) {
+	if (HTTP_204 == esp8_status.http) {
 		*success = 0; 
 		UI_set_track("Spotify Player off");
 		return;
@@ -354,7 +354,7 @@ void server_function(struct StateS *s, enum ServersID _server_id) {
 		// case SERVER_RUNNING:
 		fsm_server(s, &socket);
 
-		if (wifi_credentials.size > 0 && SUBSTATE(*s->state) == ESP8S_LISTENING)
+		if ((wifi_credentials.size > 0) && (ESP8S_LISTENING == SUBSTATE(*s->state)))
 			fsm_station_credentials(s, &wifi_credentials);
 
 		break;
@@ -381,15 +381,15 @@ void server_function(struct StateS *s, enum ServersID _server_id) {
 		// case SERVER_RUNNING:
 		fsm_server(s, &socket);
 
-		if(*(spotify_auth_content + SPOTIFY_AUTH_RANDOM_POS) > SPOTIFY_AUTH_NON_EMPTY && \
-			SUBSTATE(*s->state) == ESP8S_LISTENING)
+		if((spotify_auth_content[SPOTIFY_AUTH_RANDOM_POS] > SPOTIFY_AUTH_NON_EMPTY) && \
+		   (ESP8S_LISTENING == SUBSTATE(*s->state)))
 		{
 			*s->nx_state = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART); 
 		}
 
 	}
 
-	if (SUBSTATE(*s->state) == ESP8S_SERVER_OFF)
+	if (ESP8S_SERVER_OFF == SUBSTATE(*s->state))
 		server_state = SERVER_CONF;
 
 }
@@ -446,7 +446,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 		case CLIENT_EXEC:
 			fsm_client(state, &sock);
 
-			if (SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
+			if (ESP8SS_READY == SUPERSTATE(*state->nx_state)) {
 				client_state = CLIENT_CONF;
 				client_id =	WEATHER;
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
@@ -471,8 +471,8 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 		case CLIENT_EXEC:
 			fsm_client(state, &sock);
 		
-			if(SUPERSTATE(*state->nx_state) == ESP8SS_READY
-				|| esp8_status.http == HTTP_401) 
+			if((ESP8SS_READY == SUPERSTATE(*state->nx_state)) ||
+			   (HTTP_401 == esp8_status.http))
 			{
 				if (*spotify_token > ' ') {
 					client_id = SPOTIFY_PLAYER;
@@ -528,7 +528,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 			client_state = CLIENT_EXEC;
 
 		case CLIENT_EXEC:
-			if (SUBSTATE(*state->nx_state) == ESP8S_CONNECT_TCP)
+			if (ESP8S_CONNECT_TCP == SUBSTATE(*state->nx_state))
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 
 			if (esp8_status.http > HTTP_500) {
@@ -538,7 +538,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 
 			fsm_client(state, &sock);
 
-			if(SUPERSTATE(*state->nx_state) == ESP8SS_READY) {
+			if(ESP8SS_READY == SUPERSTATE(*state->nx_state)) {
 				client_state = CLIENT_CONF;
 				if (*spotify_token > ' ') {
 					client_id = SPOTIFY_PLAYER;
@@ -582,7 +582,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 			client_state = CLIENT_EXEC;
 
 		case CLIENT_EXEC:
-			if(SUBSTATE(*state->nx_state) == ESP8S_CONNECT_TCP)
+			if(ESP8S_CONNECT_TCP == SUBSTATE(*state->nx_state))
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 			
 			if(esp8_status.http > HTTP_500) {
@@ -592,7 +592,7 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 
 			fsm_client(state, &sock);
 
-			if (esp8_status.http == HTTP_401) {
+			if (HTTP_401 == esp8_status.http) {
 				client_state = CLIENT_CONF;
 				// When the Token is expired a renewal is asked
 				// using the refreshing token.
@@ -612,8 +612,8 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 				client_id = SPOTIFY_AUTH;
 				*state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_SSL);
 			}
-			else if (esp8_status.http == HTTP_200 || esp8_status.http == HTTP_204) {
-				if(SUBSTATE(*state->nx_state) == ESP8S_CLOSE) {
+			else if ((HTTP_200 == esp8_status.http) || (HTTP_204 == esp8_status.http)) {
+				if(ESP8S_CLOSE == SUBSTATE(*state->nx_state)) {
 					*state->nx_state = MKSTATE(ESP8SS_READY, 0);
 				}
 			}
@@ -644,11 +644,11 @@ NetEventHandler(struct StateS *s, uint8_t *server_id, uint8_t * client_id)
 		return;
 	}
 	
-	if	((internal_events) &&\
-		(SUPERSTATE(*s->state) != ESP8SS_AP) &&\
-        (SUPERSTATE(*s->state) != ESP8SS_SERVER) &&\
-		(SUPERSTATE(*s->state) != ESP8SS_STATION_CREDENTIALS) &&\
-		(SUPERSTATE(*s->nx_state) == ESP8SS_READY)) 
+	if	((internal_events) &&
+		(SUPERSTATE(*s->state) != ESP8SS_AP) &&
+        (SUPERSTATE(*s->state) != ESP8SS_SERVER) &&
+		(SUPERSTATE(*s->state) != ESP8SS_STATION_CREDENTIALS) &&
+		(ESP8SS_READY == SUPERSTATE(*s->nx_state))) 
 	{
 		if (internal_events & WEATHER_UPDATE_EVENT_CORE) {
 			internal_events &= ~WEATHER_UPDATE_EVENT_CORE;
@@ -663,7 +663,7 @@ NetEventHandler(struct StateS *s, uint8_t *server_id, uint8_t * client_id)
 			internal_events = WEATHER_UPDATE_EVENT_CORE;
 
 		} else if(internal_events & SPOTIFY_UPDATE_EVENT) {
-			if(*spotify_auth_content == SPOTIFY_AUTH_EMPTY)
+			if(SPOTIFY_AUTH_EMPTY == *spotify_auth_content)
 				return;
 			
 			internal_events &= ~SPOTIFY_UPDATE_EVENT;

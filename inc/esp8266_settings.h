@@ -28,10 +28,10 @@ typedef struct SSIDnPSWD_t {
 	uint8_t size;
 } SSIDnPSWD_t;
 
-uint16_t LUT_OK_powerup(enum ESP8InitialSetup prev_state);
-uint16_t LUT_timeout_powerup(enum ESP8InitialSetup prev_subs);
-uint16_t LUT_on_err_powerup(enum ESP8InitialSetup prev_subs);
-void fsm_powerup(struct StateS *state);
+uint16_t LUT_OK_initial_setup(enum ESP8InitialSetup prev_state);
+uint16_t LUT_timeout_initial_setup(enum ESP8InitialSetup prev_subs);
+uint16_t LUT_on_err_initial_setup(enum ESP8InitialSetup prev_subs);
+void fsm_initial_setup(struct StateS *state);
 
 uint16_t LUT_OK_access_point(enum ESP8AccessPointState prev_subs);
 void fsm_ap_config(struct StateS *state);

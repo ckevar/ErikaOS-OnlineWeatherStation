@@ -7,10 +7,10 @@
 #include "state.h"
 
 uint16_t LUT_link_pullin(enum ESP8NetManagerState supers) {
-    if(supers == ESP8SS_CLIENT)
+    if(ESP8SS_CLIENT == supers)
         return MKSTATE(supers, ESP8S_CREAD);
 
-    else if (supers == ESP8SS_SERVER)
+    else if (ESP8SS_SERVER == supers)
         return MKSTATE(supers, ESP8S_SREAD);
     
     else
@@ -26,15 +26,15 @@ app_http_process(enum ESP8NetManagerState supers, \
 	char *tmp;
     uint8_t success;
 
-	while((ESP8266_link.open[i] == 0) && (i < 5)) i++;
+	while((0 == ESP8266_link.open[i]) && (i < 5)) i++;
 
 	link_id = ESP8266_link.open[i] - 1;
 	tmp = ESP8266_link.buffXlink[link_id];
     
-    if (supers == ESP8SS_CLIENT)
+    if (ESP8SS_CLIENT == supers)
         (*callback)(&success, tmp, arg);
     
-    else if (supers == ESP8SS_SERVER) {
+    else if (ESP8SS_SERVER == supers) {
         (*callback)(&success, tmp, arg);
         if (success) success = link_id;
     }

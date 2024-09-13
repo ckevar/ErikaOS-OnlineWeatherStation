@@ -23,7 +23,7 @@ uint16_t LUT_OK_client(enum ESP8Client prev_subs) {
         [ESP8S_CLOSE]		= MKSTATE(ESP8SS_CLIENT, ESP8S_DONE),
     };
 
-    if (prev_subs > ESP8_CLIENT_COUNT)
+    if (prev_subs >= ESP8_CLIENT_COUNT)
         return MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART);
 
     return LUT[prev_subs];
@@ -61,7 +61,7 @@ void fsm_client(struct StateS *state, struct Socket *so) {
         break;
 
     case ESP8S_CREAD:
-        if (app_http_process(ESP8SS_CLIENT, so->callback, so->arg) == 0)
+        if (0 == app_http_process(ESP8SS_CLIENT, so->callback, so->arg))
             *state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CLOSE);
         else
             *state->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
