@@ -1,0 +1,35 @@
+#include "CUnit/Basic.h"
+
+#include "state.h"
+#include "network.h"
+#include "esp8266_settings.h"
+#include "esp8266_server.h"
+
+#define MAX_OK_ON_SERVER    8
+
+uint16_t LUT_OK_server(enum ESP8ServerState prev_subs) {
+    uint16_t LUT[MAX_OK_ON_SERVER] = {
+        [ESP8S_MULTI_CONN_AP]   = MKSTATE(ESP8SS_SERVER, ESP8S_SERVER_ON),
+        [ESP8S_SERVER_ON]       = MKSTATE(ESP8SS_SERVER, ESP8S_LISTENING),
+        [ESP8S_SREAD]           = MKSTATE(ESP8SS_ON_HOLD, 0),
+		[ESP8S_RMALLOC_S]		= MKSTATE(ESP8SS_ON_HOLD, 0),
+        [ESP8S_SWRITE]          = MKSTATE(ESP8SS_SERVER, ESP8S_LISTENING),
+		[ESP8S_SERVER_OFF]		= MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART),
+    };
+    if (prev_subs >= MAX_OK_ON_SERVER)
+        return MKSTATE(0,0);
+
+    return LUT[prev_subs];
+}
+
+
+void LUT_OK_server_test(void) {
+	CU_ASSERT(MKSTATE(ESP8SS_SERVER, ESP8S_SERVER_ON) == LUT_OK_server(ESP8S_MULTI_CONN_AP)); 
+	CU_ASSERT(MKSTATE(ESP8SS_SERVER, ESP8S_LISTENING) == LUT_OK_server(ESP8S_SERVER_ON));
+	CU_ASSERT(MKSTATE(ESP8SS_ON_HOLD, 0) == LUT_OK_server(ESP8S_SREAD));
+	CU_ASSERT(MKSTATE(ESP8SS_ON_HOLD, 0) == LUT_OK_server(ESP8S_RMALLOC_S));
+	CU_ASSERT(MKSTATE(ESP8SS_SERVER, ESP8S_LISTENING) ==  LUT_OK_server(ESP8S_SWRITE));
+	CU_ASSERT(MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART) == LUT_OK_server(ESP8S_SERVER_OFF));
+	CU_ASSERT(MKSTATE(0, 0) == LUT_OK_server(MAX_OK_ON_SERVER));
+	CU_ASSERT(MKSTATE(0, 0) == LUT_OK_server(-1));
+}
