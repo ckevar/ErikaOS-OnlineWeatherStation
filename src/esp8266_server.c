@@ -25,7 +25,7 @@ uint16_t LUT_OK_server(enum ESP8ServerState prev_subs) {
     return LUT[prev_subs];
 }
 
-void fsm_server(struct StateS *state, struct Socket *ss) {
+void fsm_server(struct Network *state, struct Socket *ss) {
     enum ESP8ServerState nx_state;
 
     nx_state = SUBSTATE(*state->nx_state);
@@ -42,9 +42,9 @@ void fsm_server(struct StateS *state, struct Socket *ss) {
 		break;
 
     case ESP8S_LISTENING:
-		*state->state = *state->nx_state;
+		state->state = *state->nx_state;
 		*state->nx_state = MKSTATE(ESP8SS_ON_HOLD, 0);
-        *state->timeout = 0;
+        state->timeout = 0;
 		UI_WriteState("Listening");
         UI_set_progress(nx_state, ESP8_SERVER_COUNT - 1);
 		return;
@@ -71,7 +71,7 @@ void fsm_server(struct StateS *state, struct Socket *ss) {
 		UI_WriteState("Shutting down server");
     }
 
-    *state->timeout = 0;
+    state->timeout = 0;
     UI_set_progress(nx_state, ESP8_SERVER_COUNT - 1);
-    update_state(*state->nx_state, *state->state);
+    update_state(*state->nx_state, state->state);
 }

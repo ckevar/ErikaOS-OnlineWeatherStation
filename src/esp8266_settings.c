@@ -48,7 +48,7 @@ uint16_t LUT_on_err_initial_setup(enum ESP8InitialSetup prev_subs) {
 }
 
 
-void fsm_initial_setup(struct StateS *state) {
+void fsm_initial_setup(struct Network *state) {
     enum ESP8InitialSetup nx_state;
     nx_state = SUBSTATE(*state->nx_state);
     
@@ -56,7 +56,7 @@ void fsm_initial_setup(struct StateS *state) {
     case ESP8S_RESTART:
 		esp8266_restart();
 		UI_WriteState("Restart");
-		*state->wifi_mode = WiFi_SETTINGUP;
+		state->wifi_mode = WiFi_SETTINGUP;
 		UI_clear_progress();
 		UI_WiFiNo();
 		break;
@@ -79,9 +79,9 @@ void fsm_initial_setup(struct StateS *state) {
 		break;
     }
     
-    *state->timeout = 0;
+    state->timeout = 0;
     UI_set_progress(nx_state, ESP8_INITIAL_SETUP_COUNT - 1);
-	update_state(*state->nx_state, *state->state);
+	update_state(*state->nx_state, state->state);
 }
 
 
@@ -102,14 +102,14 @@ uint16_t LUT_OK_access_point(enum ESP8AccessPointState prev_subs) {
     return LUT[prev_subs];
 }
 
-void fsm_ap_config(struct StateS *state) {
+void fsm_ap_config(struct Network *state) {
     enum ESP8AccessPointState nx_state;
     nx_state = SUBSTATE(*state->nx_state);
 
     switch(nx_state) {
     case ESP8S_RESTART_4AP:
 		esp8266_restore();
-		*state->wifi_mode = WiFi_SETTINGUP;
+		state->wifi_mode = WiFi_SETTINGUP;
 		UI_WriteState("Restoring...");
 		UI_clear_progress();
 		UI_SettingsOn();
@@ -126,16 +126,18 @@ void fsm_ap_config(struct StateS *state) {
 		UI_WriteState("Configurations on WiFi");
 		break;
     }
-    *state->timeout = 0;
-	update_state(*state->nx_state, *state->state);
+    state->timeout = 0;
+	update_state(*state->nx_state, state->state);
 	UI_set_progress(nx_state, ESP8_ACCESS_POINT_COUNT - 1);
 }
 
-uint16_t fsm_station_credentials(struct StateS *s, SSIDnPSWD_t *credentials) {
+uint16_t 
+fsm_station_credentials(struct Network *s, SSIDnPSWD_t *credentials)
+{
 	esp8266_set_SSID_and_PASS(credentials->ssidNpassword, credentials->size);
 	*s->nx_state = MKSTATE(ESP8SS_ON_HOLD, 0);
-	*s->state = MKSTATE(ESP8SS_STATION_CREDENTIALS, 0);
-	*s->timeout = 0;
+	s->state = MKSTATE(ESP8SS_STATION_CREDENTIALS, 0);
+	s->timeout = 0;
 	credentials->size = 0;
 	UI_WriteState("Trying new SSID");
 }

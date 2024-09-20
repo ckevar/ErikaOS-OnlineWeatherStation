@@ -156,7 +156,7 @@ void esp8266_req_HTML(char *http_req, unsigned short len);
 void esp8266_load_html(char *html, unsigned short len);
 void esp8266_send_html(void);
 
-void esp8266_clean_link_buff(char link);
+// void esp8266_clean_link_buff(char link);
 void esp8266_purge_link_buff(void);
 
 void esp8266_poll(void);

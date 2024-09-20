@@ -42,7 +42,7 @@ sequenceDiagram
 
 ### Firmware 
 
-The weather information is fetched from [OpenWeatherMap.org](openweathermap.org) using the location from [IP-API.com](ip-api.com). In case of [Spotify](https://developer.spotify.com/), it's a procedure that starts from fetching the _OAuth code_ for the app and token (supports token refreshment) and the pull the playback status. The design of the system can be seen as an automated web browser that stacks network management, API requests and web servers.
+The weather information is fetched from [OpenWeatherMap.org](openweathermap.org) using the location from [IP-API.com](ip-api.com). In case of [Spotify](https://developer.spotify.com/), it's a procedure that starts from fetching the _OAuth code_ for the app and token (supports token refreshment) and then pulls the playback status. The design of the system can be seen as an automated web browser that stacks network management, API requests and web servers.
 
 ***Additional Firmware notes***
 
@@ -54,26 +54,28 @@ As said the system has being designed as an automated web browser that supports 
 
 ### a. Network Automaton
 
-Every state in the presented _Graph 2_, the state machine description, is a super state but _Power_up_ state, which only links pointers of static variables into a data structure.
+Every state in the presented _Graph 2_ (the state machine description) is a super state but _Init_ state, which only starts the data structure.
 
  ``` mermaid
  ---
  title: 'Graph 2. Network Automaton'
  ---
  stateDiagram-v2 
- [*] --> Power_up
- Power_up --> 0_Initial_state 
- 0_Initial_state --> On_Hold
+ [*] --> Init
+ Init --> 0_Initial_Setup 
+ 0_Initial_Setup --> On_Hold
  
  1_NetStatus --> On_Hold
  Client --> On_Hold
  Server --> On_Hold
+ AP_config --> On_Hold : SSID and PSW provided
  
- On_Hold --> 0_Initial_state : ok
+ On_Hold --> 0_Initial_Setup : ok
  On_Hold --> 1_NetStatus : ok
  On_Hold --> Client : ok
  On_Hold --> Server : ok
  On_Hold --> Error : Fail | Error
+ On_Hold --> AP_config : ok
  
  On_Hold --> 2_Ready : ok
  2_Ready --> Client : client_mode
@@ -81,9 +83,10 @@ Every state in the presented _Graph 2_, the state machine description, is a supe
  Client --> 2_Ready
  Server --> 2_Ready
  Error --> 1_NetStatus
+ Server --> AP_config : user net config
  ```
 
-As seen, some states are transitioning into the _On_Hold_ state, this is because states such as: _0_Initial_State_, _1_NetStatus_, _2_Ready_, _Client_ and, _Server_ are states that send [AT commands](https://www.espressif.com/sites/default/files/documentation/4a-esp8266_at_instruction_set_en.pdf) to the WiFi module (ESP8266) and wait for a response that is command dependent as for both, response time and payload. Those states are as well superstates that automate configuration, browsing and serving. Details below.
+As seen, some states are transitioning into the _On_Hold_ state, this is because states such as: _0_Initial_Setup_, _1_NetStatus_, _Client_, _Server_ and, _AP_config_ are states that send [AT commands](https://www.espressif.com/sites/default/files/documentation/4a-esp8266_at_instruction_set_en.pdf) to the WiFi module (ESP8266) and since the responses are command dependent as for both, response time and payload; the waiting occurs on _On_Hold_ state where a status report by another _ErikaOS_ task will be given and _On_Hold_ willl make a move. These listed states are as well superstates that automate configuration, browsing and serving. Details below.
 
 States _0_Initial_State_, _1_NetStatus_ and, _2_Ready_ are consecutive states, meaning, once _0_Initial_State_ is done, the last sub-state calls for the initial state on the following consecutive hierarchical state, _1_NetStatus_ and so, until landing on _2_Ready_ state.
 
@@ -170,13 +173,13 @@ Same model as the client, each server can configure this server automaton, with 
 
 For both automata, the presented graphical diagrams are an abstract representation. There are so many intricacies that have been fine-tuned in code, conditions based on the remote sever response, data availability, unexpected terminated connections, error by buffering, timeouts on both server and WiFi module response.
 
-### d. Initial_State Automaton
+### d. Initial_Setup Automaton
 
 This automaton is simple, its description can be seen in _Graph 7_, it only sends commands for basic configuration and checking the device presence.
 
 ``` mermaid
 ---
-title: 'Graph 7. Initial State Automaton'
+title: 'Graph 7. Initial Setup Automaton'
 ---
 stateDiagram-v2 
 [*] --> CHECK_DEV
@@ -191,7 +194,7 @@ The state to remark is _RESTART_, that sends a restart command to the WiFi modul
 - Timeout on command responses (128 calls of On_Hold).
 - Many attempts (100) trying to get the local IP.
 
-To clarify, this Automaton isn't running in parallel but it's invoked at the beginning and upon error occurrences.  
+To clarify, this Automaton isn't running in parallel but it's invoked at the beginning or upon error occurrences.  
 
 ### e. NetStat Automaton
 
@@ -209,9 +212,32 @@ This automaton checks the network status, it is sequentially executed just after
  NETSTAT --> NETKILL : connection-open
  ```
 
+### f. AP_Config Automaton
+
+This hierarchical state machine enables a WiFi network on the WiFi Module, so the user can join for WiFi setting. This WiFi setting is done through a _WiFi supplicant_ server on a web browser ([http://192.168.1.1/](http://192.168.1.1)), so the user can provide the credentials of the WiFi network to which the WiFi module will connect to access internet. The description of this machine is seen in _Graph 9_.
+
+``` mermaid
+---
+title: 'Graph 9. AP_config Automaton'
+---
+stateDiagram-v2 
+[*] --> RESTART_FOR_AP
+RESTART_FOR_AP --> ENABLE_AP : ok
+ENABLE_AP --> INITIAL_SETUP.RESTART : error | fail
+ENABLE_AP --> SET_AP_CREDENTIALS : ok
+SET_AP_CREDENTIALS --> INITIAL_SETUP.RESTART : error | fail
+SET_AP_CREDENTIALS --> SERVER.MULTI_CONN_AP : ok
+```
+
+The _RESTART_FOR_AP_ state it's sends a regular "AT+RESTART" command to the WiFi module, so, if there's anything going on right now in the module, such as, an open connection, or another command on hold, it's not taken into account anymore. 
+
+On the other hand, If there's any error upon the following states, the everything leads back to Normal Model, or the fetching mode.
+
+The last remark 
+
 ---
 
-### f. Implementation of Hierarchical states machines
+### g. Implementation of Hierarchical states machines
 
 Of course flattening a machine of this complexity is challenging and error prone and not scale-able once implemented. Thus, the approach taken was inspired by how _devices_ are represented in the Linux kernel:
 
@@ -583,7 +609,7 @@ Unlike the simple state machine description of _Graph 10_ for this automaton,  t
 
 In the Unit test, all tokens listed in the above token table were successfully identified.
 
-## 6. Run and flash it
+## 6. Flash it and Run
 
 if the hardware is ready, The file _c_mX.bin_ can be flashed as follows:
 ``` bash

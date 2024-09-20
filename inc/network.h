@@ -18,12 +18,13 @@ enum ESP8NetManagerState {
 	ESP8SS_STATION_CREDENTIALS,
 };
 
-
-struct StateS {
-    uint16_t *nx_state;
-    uint16_t *state;
-    uint8_t *timeout;
-    int8_t *wifi_mode;
+struct Network {
+	uint16_t *nx_state;
+	uint16_t state;
+	int8_t wifi_mode;
+	uint8_t timeout;
+	uint8_t  client_id;
+	uint8_t server_id;
 };
 
 struct Socket {
@@ -50,8 +51,8 @@ enum WifiStatus {
 
 void network(void);		// runs the Finite-State Machine
 void app_fsm_restart(void);
-void server_function(struct StateS *s, uint8_t server_id);
-void client_function(struct StateS *s, uint8_t *client_id);
-void NetEventHandler(struct StateS *s, uint8_t *server_id, uint8_t *client_id);
+void server_function(struct Network *net);
+void client_function(struct Network *net);
+void NetEventHandler(struct Network *net);
 
 #endif

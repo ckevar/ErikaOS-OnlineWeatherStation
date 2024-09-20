@@ -329,14 +329,15 @@ enum ServersID {
 	SPOTIFY_CODE,
 };
 
-void server_function(struct StateS *s, enum ServersID _server_id) {
+// void server_function(struct Network *s, enum ServersID _server_id) {
+void server_function(struct Network *s) {
     static struct Socket socket;
     static SSIDnPSWD_t wifi_credentials;
 	static enum AppServerState server_state = SERVER_CONF;
 	static enum ServersID server_id = WIFI_SUPPLICANT;
 
-	if(_server_id != server_id) {
-		server_id = _server_id;
+	if(s->server_id != server_id) {
+		server_id = s->server_id;
 		server_state = SERVER_CONF;
 	}
 	
@@ -354,7 +355,7 @@ void server_function(struct StateS *s, enum ServersID _server_id) {
 		// case SERVER_RUNNING:
 		fsm_server(s, &socket);
 
-		if ((wifi_credentials.size > 0) && (ESP8S_LISTENING == SUBSTATE(*s->state)))
+		if ((wifi_credentials.size > 0) && (ESP8S_LISTENING == SUBSTATE(s->state)))
 			fsm_station_credentials(s, &wifi_credentials);
 
 		break;
@@ -382,14 +383,14 @@ void server_function(struct StateS *s, enum ServersID _server_id) {
 		fsm_server(s, &socket);
 
 		if((spotify_auth_content[SPOTIFY_AUTH_RANDOM_POS] > SPOTIFY_AUTH_NON_EMPTY) && \
-		   (ESP8S_LISTENING == SUBSTATE(*s->state)))
+		   (ESP8S_LISTENING == SUBSTATE(s->state)))
 		{
 			*s->nx_state = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_RESTART); 
 		}
 
 	}
 
-	if (ESP8S_SERVER_OFF == SUBSTATE(*s->state))
+	if (ESP8S_SERVER_OFF == SUBSTATE(s->state))
 		server_state = SERVER_CONF;
 
 }
@@ -408,7 +409,7 @@ enum ClientIDs {
 	AUTOMATIC,
 };
 
-void client_function(struct StateS *state, uint8_t *_client_id)  {
+void client_function(struct Network *state)  {
     static enum AppClientState client_state = CLIENT_CONF;
 	static enum ClientIDs client_id;
     static struct Socket sock;
@@ -419,9 +420,9 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 	static char spotify_rtoken[SPOTIFY_RTOKEN_SIZE];
 	int16_t size;
 
-	if(*_client_id != AUTOMATIC) {
-		client_id = *_client_id;
-		*_client_id = AUTOMATIC;
+	if(state->client_id != AUTOMATIC) {
+		client_id = state->client_id;
+		state->client_id = AUTOMATIC;
 		client_state = CLIENT_CONF;
 	}
 
@@ -625,35 +626,34 @@ void client_function(struct StateS *state, uint8_t *_client_id)  {
 
 /***** Event Handler *****/
 
-void 
-NetEventHandler(struct StateS *s, uint8_t *server_id, uint8_t * client_id)
-{
+
+void NetEventHandler(struct Network *s) {
 	if (IsEvent(SPOTIFY_CONF_EVENT)) {
 		*s->nx_state = MKSTATE(ESP8SS_SERVER, 0);
-		*s->state = *s->nx_state;
-		*server_id = SPOTIFY_CODE;
+		s->state = *s->nx_state;
+		s->server_id = SPOTIFY_CODE;
 		ClearEvents();
 		return;
 	}
 
 	if (IsEvent(SET_AP_ESP8266_EVNT)) {
         *s->nx_state = MKSTATE(ESP8SS_AP, 0);
-		*s->state =  *s->nx_state;
-		server_id = WIFI_SUPPLICANT;
+		s->state =  *s->nx_state;
+		s->server_id = WIFI_SUPPLICANT;
 		ClearEvents();
 		return;
 	}
 	
 	if	((internal_events) &&
-		(SUPERSTATE(*s->state) != ESP8SS_AP) &&
-        (SUPERSTATE(*s->state) != ESP8SS_SERVER) &&
-		(SUPERSTATE(*s->state) != ESP8SS_STATION_CREDENTIALS) &&
+		(SUPERSTATE(s->state) != ESP8SS_AP) &&
+        (SUPERSTATE(s->state) != ESP8SS_SERVER) &&
+		(SUPERSTATE(s->state) != ESP8SS_STATION_CREDENTIALS) &&
 		(ESP8SS_READY == SUPERSTATE(*s->nx_state))) 
 	{
 		if (internal_events & WEATHER_UPDATE_EVENT_CORE) {
 			internal_events &= ~WEATHER_UPDATE_EVENT_CORE;
 			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_CONNECT_TCP);
-			*client_id = LOCATION;
+			s->client_id = LOCATION;
 
 		} else if (internal_events & WEATHER_UPDATE_EVENT) {
 			if (*spotify_auth_content > SPOTIFY_AUTH_NON_EMPTY) {
@@ -668,11 +668,11 @@ NetEventHandler(struct StateS *s, uint8_t *server_id, uint8_t * client_id)
 			
 			internal_events &= ~SPOTIFY_UPDATE_EVENT;
 			*s->nx_state = MKSTATE(ESP8SS_CLIENT, ESP8S_RMALLOC);
-			*client_id = SPOTIFY;
+			s->client_id = SPOTIFY;
 
 		}
 	
-		*s->state = *s->nx_state;
+		s->state = *s->nx_state;
 	}
 
 }

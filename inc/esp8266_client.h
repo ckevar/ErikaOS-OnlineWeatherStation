@@ -17,6 +17,6 @@ enum ESP8Client {
 
 uint16_t esp8266_fsm_prev_OnWrap(const uint16_t prev_state);
 uint16_t LUT_OK_client(enum ESP8Client prev_subs);
-void fsm_client(struct StateS *state, struct Socket *so);
+void fsm_client(struct Network *state, struct Socket *so);
 
 #endif

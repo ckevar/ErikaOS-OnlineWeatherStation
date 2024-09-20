@@ -29,7 +29,7 @@ uint16_t LUT_OK_client(enum ESP8Client prev_subs) {
     return LUT[prev_subs];
 }
 
-void fsm_client(struct StateS *state, struct Socket *so) {
+void fsm_client(struct Network *state, struct Socket *so) {
     enum ESP8Client nx_state;
     char msg[64] = {0};
 
@@ -68,7 +68,7 @@ void fsm_client(struct StateS *state, struct Socket *so) {
 
         UI_WRITESTATE("Read ", 5, so->domain_port, so->dsize);
         UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);
-        *state->timeout = 0;
+        state->timeout = 0;
         esp8_status.cmd = ESP8_UNKNOWN;
         return;
 
@@ -77,8 +77,8 @@ void fsm_client(struct StateS *state, struct Socket *so) {
         UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);
         if (esp8_status.cmd != ESP8_LINK_CLOSED) {
 		    esp8266_close_tcp(so->link);
-			update_state(*state->nx_state, *state->state);
-            *state->timeout = 0;
+			update_state(*state->nx_state, state->state);
+            state->timeout = 0;
             return;
         }
 
@@ -86,12 +86,12 @@ void fsm_client(struct StateS *state, struct Socket *so) {
         esp8_status.cmd = ESP8_UNKNOWN;
         UI_set_progress(ESP8S_DONE, ESP8_CLIENT_COUNT - 1);
 		*state->nx_state = MKSTATE(ESP8SS_READY, 0);
-        *state->timeout = 0;
+        state->timeout = 0;
 		return;
 
     }
 
-    *state->timeout = 0;
+    state->timeout = 0;
 	UI_set_progress(nx_state, ESP8_CLIENT_COUNT - 1);
-	update_state(*state->nx_state, *state->state);
+	update_state(*state->nx_state, state->state);
 }

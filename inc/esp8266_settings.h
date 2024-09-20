@@ -31,10 +31,10 @@ typedef struct SSIDnPSWD_t {
 uint16_t LUT_OK_initial_setup(enum ESP8InitialSetup prev_state);
 uint16_t LUT_timeout_initial_setup(enum ESP8InitialSetup prev_subs);
 uint16_t LUT_on_err_initial_setup(enum ESP8InitialSetup prev_subs);
-void fsm_initial_setup(struct StateS *state);
+void fsm_initial_setup(struct Network *state);
 
 uint16_t LUT_OK_access_point(enum ESP8AccessPointState prev_subs);
-void fsm_ap_config(struct StateS *state);
+void fsm_ap_config(struct Network *state);
 
 
 
@@ -45,6 +45,7 @@ void fsm_ap_config(struct StateS *state);
 #	define LUT_OK_station_credentials()		MKSTATE(ESP8SS_READY, 0)
 #	define LUT_ERR_station_credentials()	MKSTATE(ESP8SS_ERROR, 0)
 #endif
-uint16_t fsm_station_credentials(struct StateS *s, SSIDnPSWD_t *credentials);
+uint16_t 
+fsm_station_credentials(struct Network *s, SSIDnPSWD_t *credentials);
 
 #endif

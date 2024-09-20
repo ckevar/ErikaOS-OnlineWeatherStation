@@ -20,6 +20,7 @@ uint16_t LUT_OK_netstat(const enum ESP8NetManagerState superstate);
  */ 
 uint16_t on_WiFiStatus(const enum ESP8NetstatState prev_state, char *wifi_state);
 
-void fsm_netstat(struct StateS *state);
+void fsm_netstat(struct Network *state);
+
 
 #endif

@@ -64,7 +64,6 @@ struct ESP8IPData {
 	char *buff_link;
 };
 
-/* STATUS TCP */
 #endif
 
 /* 

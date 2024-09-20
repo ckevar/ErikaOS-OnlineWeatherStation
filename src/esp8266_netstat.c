@@ -70,7 +70,7 @@ uint16_t on_WiFiStatus(const enum ESP8NetstatState prev_subs, char *wifi_state) 
 
 /******** Finite State Machine *******/
 
-void fsm_netstat(struct StateS *state) {
+void fsm_netstat(struct Network *state) {
     enum ESP8NetstatState nx_state;
     nx_state = SUBSTATE(*state->nx_state);
 
@@ -93,7 +93,7 @@ void fsm_netstat(struct StateS *state) {
 		UI_WriteState("Kill ports");
     }
 
-    *state->timeout = 0;
+    state->timeout = 0;
 	UI_set_progress(nx_state, ESP8_NETSTATUS_COUNT - 1);
-	update_state(*state->nx_state, *state->state);
+	update_state(*state->nx_state, state->state);
 }

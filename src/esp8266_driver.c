@@ -602,16 +602,11 @@ static uint16_t esp8266_ipd_parse(char *out_buff) {
 		
 		// "-47" because ascii "1" (=49), the link 0 wil be 1
 		link = *esp8.read - 47;
-
-		while(ESP8266_link.open[link_queue] != link && link_queue < 4) 
-			link_queue++;
+		link_queue = link  - 1;
 		
-		if (4 == link_queue) {
-			link_queue = ESP8266_link.n_links;
-			ESP8266_link.n_links = (ESP8266_link.n_links + 1) % 4;
-		}
+		ESP8266_link.open[link_queue];
 		
-		ESP8266_link.open[link_queue] = link; 
+		ESP8266_link.open[link_queue] = *esp8.read - 47; 
 		
 		// includes both commas: "<link_id:8bits>,"
 		esp8266_rx_N_pop(2);

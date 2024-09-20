@@ -20,28 +20,28 @@
 #define TIMEOUT_ON_WAITING                  128
 
 
-static uint16_t LUT_onOK(struct StateS *s) {
+static uint16_t LUT_onOK(struct Network *s) {
     enum ESP8NetManagerState supers;
-    supers = SUPERSTATE(*s->state);
+    supers = SUPERSTATE(s->state);
 
 	switch (supers) {
     case ESP8SS_INITIAL_SETUP:
-        return LUT_OK_initial_setup(SUBSTATE(*s->state));
+        return LUT_OK_initial_setup(SUBSTATE(s->state));
 
     case ESP8SS_NETSTATUS:
-        if(ESP8S_NETSTAT == SUBSTATE(*s->state))
-            return LUT_OK_netstat(SUPERSTATE(*s->state));
+        if(ESP8S_NETSTAT == SUBSTATE(s->state))
+            return LUT_OK_netstat(SUPERSTATE(s->state));
 
         return MKSTATE(ESP8SS_ON_HOLD, 0);
     
     case ESP8SS_CLIENT:
-        return LUT_OK_client(SUBSTATE(*s->state));
+        return LUT_OK_client(SUBSTATE(s->state));
 	
     case ESP8SS_AP:
-        return LUT_OK_access_point(SUBSTATE(*s->state));
+        return LUT_OK_access_point(SUBSTATE(s->state));
 
     case ESP8SS_SERVER:
-        return LUT_OK_server(SUBSTATE(*s->state));
+        return LUT_OK_server(SUBSTATE(s->state));
 
 	case ESP8SS_STATION_CREDENTIALS:
 		esp8_status.wifi = WiFi_CONNECTED;
@@ -54,12 +54,12 @@ static uint16_t LUT_onOK(struct StateS *s) {
 
 
 
-static uint16_t fsm_on_http_close(uint16_t *prev_state, char *wifi) {
-    enum ESP8NetManagerState supers = SUPERSTATE(*prev_state);
+static uint16_t fsm_on_http_close(uint16_t prev_state) {
+    enum ESP8NetManagerState supers = SUPERSTATE(prev_state);
 
     switch(supers) {
     case ESP8SS_CLIENT:
-        switch(SUBSTATE(*prev_state)) {
+        switch(SUBSTATE(prev_state)) {
         case ESP8S_CLOSE:
             return MKSTATE(ESP8SS_ON_HOLD, 0);
         }
@@ -71,7 +71,7 @@ static uint16_t fsm_on_http_close(uint16_t *prev_state, char *wifi) {
     }
 }
 
-static uint16_t fsm_on_waiting_state(struct StateS *s) {
+static uint16_t fsm_on_waiting_state(struct Network *s) {
     switch(esp8_status.cmd) {
     case ESP8_OK: 
 	    esp8_status.cmd = ESP8_UNKNOWN;
@@ -84,23 +84,23 @@ static uint16_t fsm_on_waiting_state(struct StateS *s) {
 
     case ESP8_WRAP:
 	    esp8_status.cmd = ESP8_UNKNOWN;
-	    return esp8266_fsm_prev_OnWrap(*s->state);
+	    return esp8266_fsm_prev_OnWrap(s->state);
 
     case ESP8_DATA_PULLIN:
-        return LUT_link_pullin(SUPERSTATE(*s->state));
+        return LUT_link_pullin(SUPERSTATE(s->state));
 
     case ESP8_LINK_CLOSED:
 	    esp8_status.cmd = ESP8_UNKNOWN;
-        return  fsm_on_http_close(s->state, s->wifi_mode);
+        return  fsm_on_http_close(s->state);
 
     case ESP8_IP:
 	    esp8_status.cmd = ESP8_UNKNOWN;
-	    return on_WiFiStatus(SUBSTATE(*s->state), s->wifi_mode);
+	    return on_WiFiStatus(SUBSTATE(s->state), &s->wifi_mode);
 
     case ESP8_READY:
         esp8_status.cmd = ESP8_UNKNOWN;
 
-		if (ESP8SS_AP == SUPERSTATE(*s->state))
+		if (ESP8SS_AP == SUPERSTATE(s->state))
 		    return MKSTATE(ESP8SS_AP, ESP8S_ENABLE_AP);
 
         // else
@@ -112,15 +112,15 @@ static uint16_t fsm_on_waiting_state(struct StateS *s) {
 
 }
 
-static short fsm_on_err_fail(struct StateS *s) {
+static short fsm_on_err_fail(struct Network *s) {
     enum ESP8NetManagerState supers;
 
-    supers = SUPERSTATE(*s->state);
+    supers = SUPERSTATE(s->state);
     
     switch(supers) {
 
     case ESP8SS_INITIAL_SETUP:
-        return LUT_on_err_initial_setup(SUBSTATE(*s->state));
+        return LUT_on_err_initial_setup(SUBSTATE(s->state));
 
 	case ESP8SS_STATION_CREDENTIALS:
 		esp8_status.wifi = WiFi_NO_CONNECTED;
@@ -139,7 +139,7 @@ static short fsm_on_err_fail(struct StateS *s) {
     }
 }
 
-static short fsm_on_timeout(unsigned short prev_state) {
+static short fsm_on_timeout(uint16_t prev_state) {
     enum ESP8NetManagerState supers;
     supers = SUPERSTATE(prev_state);
 
@@ -163,7 +163,7 @@ static short fsm_on_timeout(unsigned short prev_state) {
     }
 }
 
-__attribute__((weak)) void client_function(struct StateS *s, uint8_t *client_id)  {
+__attribute__((weak)) void client_function(struct Network *s) {
 	
 	static struct Socket sock;
 	
@@ -203,7 +203,8 @@ __attribute__((weak)) void client_function(struct StateS *s, uint8_t *client_id)
 	*s->nx_state = MKSTATE(ESP8SS_READY, 0);
 }
 
-__attribute__((weak)) void server_function(struct StateS *s, uint8_t server_id) {
+// server_function(struct Network *s, uint8_t server_id)
+__attribute__((weak)) void server_function(struct Network *s) {
 
 	static struct Socket sock;
 	
@@ -223,73 +224,67 @@ __attribute__((weak)) void server_function(struct StateS *s, uint8_t server_id) 
 	*s->nx_state = MKSTATE(ESP8SS_READY, 0);
 }
 
-__attribute__((weak)) void NetEventHandler(struct StateS *s, \
-		uint8_t *server_id, uint8_t *client_id) 
-{
+
+__attribute__((weak)) void NetEventHandler(struct Network *s) {
 
 }
 
+
 void network(void) {
 	static uint16_t nx_state = MKSTATE(ESP8SS_INIT, 0);
-	static uint16_t state;
-    static char wifi_status = WiFi_NO_CONNECTED;
-    static uint8_t timeout_waiting;
-    static struct StateS nu_state;
-	static uint8_t server_id = 0;
-	static uint8_t client_id = 0;
+	static struct Network net = {0};
     enum ESP8NetManagerState supers;
 
-	NetEventHandler(&nu_state, &server_id, &client_id);
+	NetEventHandler(&net);
 
-    supers = SUPERSTATE(*nu_state.nx_state);
+    supers = SUPERSTATE(nx_state);
 	switch (supers) {
 		case ESP8SS_INIT:
-			nu_state.nx_state = &nx_state;
-			nu_state.state = &state;
-			nu_state.wifi_mode = &wifi_status;
-			nu_state.timeout = &timeout_waiting;
+			net.nx_state = &nx_state;
+			net.wifi_mode = WiFi_NO_CONNECTED;
+			net.timeout = 0;
 			nx_state = MKSTATE(ESP8SS_INITIAL_SETUP, ESP8S_CHECK_DEV);
-			state = nx_state;		
-
+			net.state = nx_state;
+			
         case ESP8SS_INITIAL_SETUP:
-            fsm_initial_setup(&nu_state);
+            fsm_initial_setup(&net);
             break;
 
         case ESP8SS_NETSTATUS:
-            fsm_netstat(&nu_state);
+            fsm_netstat(&net);
             break;
 
         case ESP8SS_CLIENT:
-            client_function(&nu_state, &client_id);
+            client_function(&net);
             break;
         
         case ESP8SS_READY:
             UI_WriteState("READY");
-            timeout_waiting = 0;
+			net.timeout = 0;
             break;
         
         case ESP8SS_AP:
-            fsm_ap_config(&nu_state);
+            fsm_ap_config(&net);
             break;
         
         case ESP8SS_SERVER:
-            server_function(&nu_state, server_id);
+            server_function(&net);
             break;
 		
         case ESP8SS_ON_HOLD:
-            nx_state = fsm_on_waiting_state(&nu_state);
+            nx_state = fsm_on_waiting_state(&net);
             
-            timeout_waiting++;
-            if (TIMEOUT_ON_WAITING == timeout_waiting) {
-                timeout_waiting = 0;
-                nx_state = fsm_on_timeout(state);
+            net.timeout++;
+            if (TIMEOUT_ON_WAITING == net.timeout) {
+                net.timeout = 0;
+                nx_state = fsm_on_timeout(net.state);
             }
 
 			break;
 
         case ESP8SS_ERROR:
 			UI_set_err_progress(1, 1);
-            nx_state = fsm_on_err_fail(&nu_state);
+            nx_state = fsm_on_err_fail(&net);
 			break;
 
 	}
